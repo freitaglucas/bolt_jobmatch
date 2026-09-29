@@ -1,0 +1,89 @@
+export type Role = 'candidate' | 'recruiter';
+
+export type Seniority = 'Junior' | 'Pleno' | 'Senior' | 'Especialista';
+
+export type SkillStatus = 'match' | 'gap' | 'missing';
+
+export interface SkillRequirement {
+  name: string;
+  level: number; // 1-5 required level
+  candidateLevel: number; // 0 = missing, 1-5 = has it
+  mandatory: boolean;
+}
+
+export interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  type: 'CLT' | 'PJ' | 'Híbrido';
+  description: string;
+  matchScore: number;
+  skills: SkillRequirement[];
+  posted: string;
+  tags: string[];
+}
+
+export type ApplicationStatus =
+  | 'Em análise'
+  | 'Triagem'
+  | 'Entrevista'
+  | 'Final'
+  | 'Aprovado'
+  | 'Rejeitado';
+
+export interface TimelineStep {
+  label: string;
+  date: string;
+  done: boolean;
+  status: ApplicationStatus;
+}
+
+export interface Application {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  status: ApplicationStatus;
+  appliedDate: string;
+  matchScore: number;
+  timeline: TimelineStep[];
+  feedback?: string;
+}
+
+export interface CandidateSkill {
+  name: string;
+  level: number; // 1-5
+}
+
+export interface CandidateProfile {
+  name: string;
+  role: string;
+  seniority: Seniority;
+  email: string;
+  location: string;
+  bio: string;
+  skills: CandidateSkill[];
+  projects: { title: string; description: string; link: string }[];
+  links: { label: string; url: string }[];
+}
+
+export interface PipelineCandidate {
+  id: string;
+  name: string;
+  role: string;
+  seniority: Seniority;
+  matchScore: number;
+  appliedDate: string;
+  stage: ApplicationStatus;
+  avatarColor: string;
+}
+
+export interface TokenEvent {
+  id: string;
+  action: string;
+  amount: number;
+  date: string;
+  type: 'earn' | 'spend';
+}
