@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Layout, type Screen } from '@/components/Layout';
 import { Landing } from '@/screens/Landing';
@@ -16,7 +16,8 @@ import { Tokens } from '@/screens/Tokens';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import type { Role, Job, PipelineCandidate } from '@/lib/types';
-import { mockJobs, mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
+import { mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
+import { useAuth } from '@/features/auth/hooks';
 
 type AppState = 'landing' | 'auth' | 'app';
 
@@ -33,6 +34,20 @@ function App() {
   const [jobCandidates, setJobCandidates] = useState<Record<string, PipelineCandidate[]>>(mockJobCandidates);
 
   const { toast } = useToast();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (auth.isLoading || !auth.user) {
+      return;
+    }
+    if (auth.user.role) {
+      setRole(auth.user.role);
+      setScreen(auth.user.role === 'recruiter' ? 'dashboard' : 'swipe');
+      setAppState('app');
+    } else {
+      setAppState('auth');
+    }
+  }, [auth.isLoading, auth.user]);
 
   const toggleDark = () => {
     setDarkMode((prev) => {
@@ -52,12 +67,20 @@ function App() {
     setAppState('app');
   };
 
-  const handleLogout = () => {
-    setAppState('landing');
-    setSelectedJob(null);
-    setAppliedJobIds(new Set());
-    setRecruiterJobs(mockRecruiterJobs);
-    setJobCandidates(mockJobCandidates);
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      setAppState('landing');
+      setSelectedJob(null);
+      setAppliedJobIds(new Set());
+      setRecruiterJobs(mockRecruiterJobs);
+      setJobCandidates(mockJobCandidates);
+    } catch {
+      toast({
+        title: 'Não foi possível sair',
+        description: 'Tente novamente.',
+      });
+    }
   };
 
   const handleApply = (job: Job) => {

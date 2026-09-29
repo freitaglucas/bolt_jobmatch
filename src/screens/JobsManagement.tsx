@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,6 @@ import {
   Coins,
   Users,
   UserPlus,
-  Calendar,
   MoreVertical,
   Eye,
   Trash2,
@@ -26,12 +25,10 @@ import {
   Clock,
   DollarSign,
   UserCheck,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
-import type { Job, PipelineCandidate, ApplicationStatus } from '@/lib/types';
-import { pipelineColumns } from '@/lib/mock-data';
+import type { Job, PipelineCandidate } from '@/lib/types';
 import type { Screen } from '@/components/Layout';
 
 interface JobsManagementProps {
@@ -66,8 +63,6 @@ export function JobsManagement({
   const [filter, setFilter] = useState<'all' | 'Ativa' | 'Pausada' | 'Rascunho' | 'Fechada'>('all');
 
   const filteredJobs = filter === 'all' ? jobs : jobs.filter((j) => j.status === filter);
-  const stages = pipelineColumns.map((c) => c.stage) as ApplicationStatus[];
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       {/* Header */}
@@ -109,8 +104,6 @@ export function JobsManagement({
       <div className="space-y-4">
         {filteredJobs.map((job, i) => {
           const cfg = statusConfig(job.status);
-          const candidates = jobCandidates[job.id] || [];
-
           return (
             <motion.div
               key={job.id}
@@ -316,7 +309,6 @@ export function JobsManagement({
       <JobCandidatesModal
         job={selectedJob}
         candidates={selectedJob ? jobCandidates[selectedJob.id] || [] : []}
-        stages={stages}
         onClose={() => setSelectedJob(null)}
         onNavigate={onNavigate}
       />
@@ -327,13 +319,11 @@ export function JobsManagement({
 function JobCandidatesModal({
   job,
   candidates,
-  stages,
   onClose,
   onNavigate,
 }: {
   job: Job | null;
   candidates: PipelineCandidate[];
-  stages: ApplicationStatus[];
   onClose: () => void;
   onNavigate: (screen: Screen) => void;
 }) {

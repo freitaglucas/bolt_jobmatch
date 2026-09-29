@@ -25,7 +25,6 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchScoreRing } from '@/components/MatchScoreRing';
 import type { Job, SkillRequirement } from '@/lib/types';
 
 interface JobCreateProps {
