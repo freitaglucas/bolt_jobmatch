@@ -17,9 +17,9 @@ import {
   Sparkles,
   ChevronDown,
 } from 'lucide-react';
-import { mockCandidate, mockJobs } from '@/lib/mock-data';
 import type { Job } from '@/lib/types';
-import { useSwipeDeck, type SwipeDeckCard } from '@/features/jobs/hooks';
+import { useActiveJobs, useSwipeDeck, type SwipeDeckCard } from '@/features/jobs/hooks';
+import { useMyMatchSkills } from '@/features/candidates/hooks';
 import type { MatchFactor } from '@/features/match/types';
 import { cn } from '@/lib/utils';
 import {
@@ -28,8 +28,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
+const EMPTY_JOBS: Job[] = [];
+
 interface SwipeProps {
-  onApply: (job: Job) => void;
+  onApply: (job: Job) => Promise<boolean>;
   onDetail: (job: Job) => void;
 }
 
@@ -96,12 +98,14 @@ function JobCard({
   onDetail,
   isTop,
   index,
+  isApplying,
 }: {
   card: SwipeDeckCard;
   onDragEnd: (offsetX: number) => 'left' | 'right' | null;
   onDetail: () => void;
   isTop: boolean;
   index: number;
+  isApplying: boolean;
 }) {
   const [exitX, setExitX] = useState(0);
   const { job, match } = card;
@@ -133,7 +137,7 @@ function JobCard({
         y: index * 12,
       }}
       exit={{ x: exitX, opacity: 0, transition: { duration: 0.3 } }}
-      drag={isTop ? 'x' : false}
+      drag={isTop && !isApplying ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       onDragEnd={handleDragEnd}
       style={{ zIndex: 10 - index }}
@@ -247,8 +251,74 @@ function JobCard({
 }
 
 export function Swipe({ onApply, onDetail }: SwipeProps) {
-  const deck = useSwipeDeck(mockJobs, mockCandidate, onApply);
+  const jobsQuery = useActiveJobs();
+  const skillsQuery = useMyMatchSkills();
+  const jobs = jobsQuery.data ?? EMPTY_JOBS;
+  const candidateSkills = skillsQuery.data ?? [];
+  const deck = useSwipeDeck(jobs, candidateSkills, onApply);
   const currentJob = deck.currentJob;
+  const queryError = jobsQuery.error ?? skillsQuery.error;
+
+  if (jobsQuery.isLoading || skillsQuery.isLoading) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-6 text-center">
+        <h1 className="text-2xl font-bold">Vagas para você</h1>
+        <p className="text-sm text-muted-foreground mt-2">Carregando vagas e competências...</p>
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-6 text-center">
+        <h1 className="text-2xl font-bold">Não foi possível carregar o Swipe</h1>
+        <p role="alert" className="text-sm text-destructive mt-2">
+          {queryError instanceof Error
+            ? queryError.message
+            : 'Verifique sua conexão e tente novamente.'}
+        </p>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => {
+            void jobsQuery.refetch();
+            void skillsQuery.refetch();
+          }}
+        >
+          Tentar novamente
+        </Button>
+      </div>
+    );
+  }
+
+  if (candidateSkills.length === 0) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-6 text-center">
+        <h1 className="text-2xl font-bold">Complete seu perfil</h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          Cadastre suas competências para ver o Match Score das vagas.
+        </p>
+      </div>
+    );
+  }
+
+  const showDetails = (job: Job, card?: SwipeDeckCard) => {
+    const declaredSkills = new Map(
+      candidateSkills.map((skill) => [
+        skill.skill_name.trim().toLocaleLowerCase(),
+        skill.declared_level,
+      ]),
+    );
+    onDetail({
+      ...job,
+      matchScore: card?.match.score ?? job.matchScore,
+      skills: job.skills.map((skill) => ({
+        ...skill,
+        candidateLevel:
+          declaredSkills.get(skill.name.trim().toLocaleLowerCase()) ?? 0,
+      })),
+    });
+  };
 
   return (
     <div className="max-w-md mx-auto px-4 py-6">
@@ -271,9 +341,13 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Você viu todas as vagas!</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {jobs.length > 0
+                  ? 'Você viu todas as vagas!'
+                  : 'Nenhuma vaga ativa no momento'}
+              </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {deck.appliedCount > 0
+                {jobs.length > 0 && deck.appliedCount > 0
                   ? `Você se candidatou a ${deck.appliedCount} vaga${deck.appliedCount > 1 ? 's' : ''}.`
                   : 'Volte mais tarde para novas oportunidades.'}
               </p>
@@ -292,9 +366,10 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
                   key={card.job.id}
                   card={card}
                   onDragEnd={deck.handleDragEnd}
-                  onDetail={() => onDetail(card.job)}
+                  onDetail={() => showDetails(card.job, card)}
                   isTop={index === 0}
                   index={index}
+                  isApplying={deck.isApplying}
                 />
               ))
           )}
@@ -307,14 +382,16 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
           <Button
             size="icon"
             variant="outline"
-            onClick={deck.passCurrent}
+            onClick={() => void deck.passCurrent()}
+            disabled={deck.isApplying}
             className="h-14 w-14 rounded-full border-2 border-destructive/30 hover:border-destructive hover:bg-destructive/10 group"
           >
             <X className="h-6 w-6 text-destructive group-hover:scale-110 transition-transform" />
           </Button>
           <Button
             size="icon"
-            onClick={deck.likeCurrent}
+            onClick={() => void deck.likeCurrent()}
+            disabled={deck.isApplying}
             className="h-16 w-16 rounded-full bg-gradient-purple-teal border-0 hover:opacity-90 shadow-lg group"
           >
             <Heart className="h-7 w-7 text-white group-hover:scale-110 transition-transform" />
@@ -322,7 +399,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
           <Button
             size="icon"
             variant="outline"
-            onClick={() => onDetail(currentJob)}
+            onClick={() => showDetails(currentJob)}
             className="h-14 w-14 rounded-full border-2 border-primary/30 hover:border-primary hover:bg-primary/10 group"
           >
             <Info className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />

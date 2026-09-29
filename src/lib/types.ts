@@ -9,6 +9,7 @@ export interface SkillRequirement {
   level: number; // 1-5 required level
   candidateLevel: number; // 0 = missing, 1-5 = has it
   mandatory: boolean;
+  weight?: number;
 }
 
 export interface Job {

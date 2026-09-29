@@ -8,8 +8,8 @@ import type {
   SignUpResult,
 } from './types';
 
-export function mapAuthUser(user: User): AuthUser {
-  const parsedRole = UserRoleSchema.safeParse(user.user_metadata['role']);
+export function mapAuthUser(user: User, role: unknown): AuthUser {
+  const parsedRole = UserRoleSchema.safeParse(role);
 
   return {
     id: user.id,
@@ -23,6 +23,20 @@ export function mapAuthUser(user: User): AuthUser {
   };
 }
 
+async function getAuthUser(user: User): Promise<AuthUser> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return mapAuthUser(user, data?.role);
+}
+
 export async function signIn(credentials: SignInCredentials): Promise<AuthUser> {
   const validatedCredentials = SignInSchema.parse(credentials);
   const { data, error } = await supabase.auth.signInWithPassword(validatedCredentials);
@@ -32,7 +46,7 @@ export async function signIn(credentials: SignInCredentials): Promise<AuthUser> 
   if (!data.user) {
     throw new Error('O Supabase não retornou um usuário autenticado.');
   }
-  return mapAuthUser(data.user);
+  return getAuthUser(data.user);
 }
 
 export async function signUp(
@@ -57,7 +71,7 @@ export async function signUp(
   }
 
   return {
-    user: mapAuthUser(data.user),
+    user: data.session ? await getAuthUser(data.user) : mapAuthUser(data.user, null),
     requiresEmailConfirmation: data.session === null,
   };
 }
@@ -74,5 +88,5 @@ export async function getSession(): Promise<AuthUser | null> {
   if (error) {
     throw error;
   }
-  return data.session ? mapAuthUser(data.session.user) : null;
+  return data.session ? getAuthUser(data.session.user) : null;
 }

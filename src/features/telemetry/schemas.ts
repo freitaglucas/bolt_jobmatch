@@ -28,7 +28,7 @@ export const SwipeDecisionMetadataSchema = z.object({
 export const ApplicationSubmittedMetadataSchema = z.object({
   job_id: z.string().uuid(),
   score: z.number().min(0).max(100),
-  mandatory_skills_met: z.boolean(),
+  mandatory_skills_met: z.boolean().optional(),
 });
 
 export const EventLogSchema = z.object({
@@ -36,7 +36,7 @@ export const EventLogSchema = z.object({
   user_id: z.string().uuid(),
   session_id: z.string().uuid(),
   event_type: TelemetryEventTypeSchema,
-  target_type: z.string().min(1),
+  target_type: z.enum(['job', 'application', 'candidate']),
   target_id: z.string().uuid(),
   metadata: JsonSchema,
   created_at: z.string().datetime(),

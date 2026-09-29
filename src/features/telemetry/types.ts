@@ -7,7 +7,7 @@ export interface EventLog {
   user_id: string;
   session_id: string;
   event_type: TelemetryEventType;
-  target_type: string;
+  target_type: 'job' | 'application' | 'candidate';
   target_id: string;
   metadata: Json;
   created_at: string;
@@ -27,5 +27,5 @@ export interface SwipeDecisionMetadata {
 export interface ApplicationSubmittedMetadata {
   job_id: string;
   score: number;
-  mandatory_skills_met: boolean;
+  mandatory_skills_met?: boolean;
 }

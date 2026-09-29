@@ -18,6 +18,8 @@ import { Toaster } from '@/components/ui/toaster';
 import type { Role, Job, PipelineCandidate } from '@/lib/types';
 import { mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
 import { useAuth } from '@/features/auth/hooks';
+import { createApplication } from '@/features/applications/api';
+import { trackApplicationSubmitted } from '@/features/telemetry/api';
 
 type AppState = 'landing' | 'auth' | 'app';
 
@@ -83,13 +85,36 @@ function App() {
     }
   };
 
-  const handleApply = (job: Job) => {
-    setAppliedJobIds((prev) => new Set(prev).add(job.id));
-    toast({
-      title: 'Candidatura enviada!',
-      description: `Você se candidatou para ${job.title} na ${job.company}.`,
-    });
-    setScreen('applications');
+  const handleApply = async (job: Job): Promise<boolean> => {
+    try {
+      const result = await createApplication(job.id);
+      setAppliedJobIds((previous) => new Set(previous).add(job.id));
+      if (result.created) {
+        void trackApplicationSubmitted(
+          job.id,
+          result.application.match_score,
+        ).catch(() => undefined);
+        toast({
+          title: 'Candidatura enviada!',
+          description: `Você se candidatou para ${job.title} na ${job.company}.`,
+        });
+      } else {
+        toast({
+          title: 'Você já se candidatou',
+          description: `Sua candidatura para ${job.title} continua registrada.`,
+        });
+      }
+      return true;
+    } catch (error) {
+      toast({
+        title: 'Não foi possível enviar sua candidatura',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Verifique sua conexão e tente novamente.',
+      });
+      return false;
+    }
   };
 
   const handleDetail = (job: Job) => {

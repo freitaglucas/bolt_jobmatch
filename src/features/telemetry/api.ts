@@ -87,7 +87,7 @@ async function insertSwipeEvent(
     event_type: event.event_type,
     target_type: event.target_type,
     target_id: event.target_id,
-    metadata: event.metadata,
+    metadata: parsedMetadata,
   });
 
   if (error) {
@@ -110,9 +110,14 @@ export function trackSwipeDecision(
 export function trackApplicationSubmitted(
   jobId: string,
   score: number,
-  mandatorySkillsMet: boolean,
+  mandatorySkillsMet?: boolean,
 ): Promise<void> {
-  return insertSwipeEvent('application_submitted', jobId, score, {
-    mandatory_skills_met: mandatorySkillsMet,
-  });
+  return insertSwipeEvent(
+    'application_submitted',
+    jobId,
+    score,
+    mandatorySkillsMet === undefined
+      ? undefined
+      : { mandatory_skills_met: mandatorySkillsMet },
+  );
 }

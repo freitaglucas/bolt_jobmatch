@@ -9,6 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -33,6 +40,13 @@ import {
 import { mockCandidate } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 import type { WorkExperience } from '@/lib/types';
+import {
+  useMyMatchSkills,
+  useRemoveCandidateSkill,
+  useSaveCandidateSkill,
+  useSkillCatalog,
+} from '@/features/candidates/hooks';
+import { useToast } from '@/hooks/use-toast';
 
 const seniorityLevel: Record<string, number> = {
   Junior: 25,
@@ -88,6 +102,9 @@ function SkillBar({ name, level }: { name: string; level: number }) {
 
 export function Profile() {
   const [experiences, setExperiences] = useState<WorkExperience[]>(mockCandidate.workExperiences);
+  const [newSkillId, setNewSkillId] = useState('');
+  const [newSkillLevel, setNewSkillLevel] = useState('3');
+  const [newSkillEvidence, setNewSkillEvidence] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [competencyInput, setCompetencyInput] = useState('');
@@ -102,7 +119,74 @@ export function Profile() {
   });
 
   const candidate = mockCandidate;
+  const candidateSkillsQuery = useMyMatchSkills();
+  const skillCatalogQuery = useSkillCatalog();
+  const saveCandidateSkill = useSaveCandidateSkill();
+  const removeCandidateSkill = useRemoveCandidateSkill();
+  const { toast } = useToast();
+  const candidateSkills = candidateSkillsQuery.data ?? [];
+  const candidateSkillIds = new Set(candidateSkills.map((skill) => skill.skill_id));
+  const availableSkills = (skillCatalogQuery.data ?? []).filter(
+    (skill) => !candidateSkillIds.has(skill.id),
+  );
   const initials = candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2);
+
+  const handleSaveCandidateSkill = async (
+    skillId: string,
+    declaredLevel: number,
+    evidencedByProject: boolean,
+  ) => {
+    try {
+      await saveCandidateSkill.mutateAsync({
+        skillId,
+        declaredLevel,
+        evidencedByProject,
+      });
+      return true;
+    } catch (error) {
+      toast({
+        title: 'Não foi possível salvar a competência',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Verifique sua conexão e tente novamente.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const handleAddCandidateSkill = async () => {
+    if (!newSkillId) {
+      return;
+    }
+    const saved = await handleSaveCandidateSkill(
+      newSkillId,
+      Number(newSkillLevel),
+      newSkillEvidence,
+    );
+    if (saved) {
+      setNewSkillId('');
+      setNewSkillLevel('3');
+      setNewSkillEvidence(false);
+      toast({ title: 'Competência adicionada ao perfil' });
+    }
+  };
+
+  const handleRemoveCandidateSkill = async (skillId: string) => {
+    try {
+      await removeCandidateSkill.mutateAsync(skillId);
+    } catch (error) {
+      toast({
+        title: 'Não foi possível remover a competência',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Verifique sua conexão e tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const openAddDialog = () => {
     setEditingId(null);
@@ -375,19 +459,167 @@ export function Profile() {
       {/* Skills */}
       <Card className="border-border mb-6">
         <CardHeader>
-          <CardTitle className="text-lg">Competências ({candidate.skills.length})</CardTitle>
+          <CardTitle className="text-lg">Competências ({candidateSkills.length})</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {candidate.skills.map((skill, i) => (
-            <motion.div
-              key={skill.name}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.03 }}
-            >
-              <SkillBar name={skill.name} level={skill.level} />
-            </motion.div>
-          ))}
+        <CardContent className="space-y-4">
+          {candidateSkillsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">Carregando suas competências...</p>
+          ) : candidateSkillsQuery.error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {candidateSkillsQuery.error instanceof Error
+                ? candidateSkillsQuery.error.message
+                : 'Não foi possível carregar suas competências.'}
+            </p>
+          ) : candidateSkills.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Você ainda não cadastrou competências. Adicione algumas para calcular o Match Score.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {candidateSkills.map((skill) => (
+                <div key={skill.skill_id} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <SkillBar
+                        name={skill.skill_name}
+                        level={skill.declared_level}
+                      />
+                    </div>
+                    <Select
+                      value={String(skill.declared_level)}
+                      onValueChange={(level) => {
+                        void handleSaveCandidateSkill(
+                          skill.skill_id,
+                          Number(level),
+                          skill.evidenced_by_project,
+                        );
+                      }}
+                      disabled={saveCandidateSkill.isPending}
+                    >
+                      <SelectTrigger
+                        className="w-20"
+                        aria-label={`Nível de ${skill.skill_name}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <SelectItem key={level} value={String(level)}>
+                            Nv {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label={`Remover ${skill.skill_name}`}
+                      disabled={removeCandidateSkill.isPending}
+                      onClick={() => void handleRemoveCandidateSkill(skill.skill_id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 pl-32 md:pl-40">
+                    <Switch
+                      id={`skill-evidence-${skill.skill_id}`}
+                      checked={skill.evidenced_by_project}
+                      disabled={saveCandidateSkill.isPending}
+                      onCheckedChange={(checked) => {
+                        void handleSaveCandidateSkill(
+                          skill.skill_id,
+                          skill.declared_level,
+                          checked,
+                        );
+                      }}
+                    />
+                    <Label
+                      htmlFor={`skill-evidence-${skill.skill_id}`}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Tenho projeto que comprova esta competência
+                    </Label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {skillCatalogQuery.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {skillCatalogQuery.error instanceof Error
+                ? skillCatalogQuery.error.message
+                : 'Não foi possível carregar o catálogo de competências.'}
+            </p>
+          )}
+
+          {!candidateSkillsQuery.error && !skillCatalogQuery.error && (
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              {skillCatalogQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando catálogo...</p>
+              ) : availableSkills.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {candidateSkills.length > 0
+                    ? 'Todas as competências do catálogo já estão no seu perfil.'
+                    : 'O catálogo está vazio. Cadastre competências no banco antes de usar o Match Score.'}
+                </p>
+              ) : (
+                <>
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                    <Select value={newSkillId} onValueChange={setNewSkillId}>
+                      <SelectTrigger aria-label="Nova competência">
+                        <SelectValue placeholder="Selecione uma competência" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSkills.map((skill) => (
+                          <SelectItem key={skill.id} value={skill.id}>
+                            {skill.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={newSkillLevel} onValueChange={setNewSkillLevel}>
+                      <SelectTrigger aria-label="Nível da nova competência">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <SelectItem key={level} value={String(level)}>
+                            Nv {level}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="new-skill-evidence"
+                        checked={newSkillEvidence}
+                        onCheckedChange={setNewSkillEvidence}
+                      />
+                      <Label
+                        htmlFor="new-skill-evidence"
+                        className="text-xs text-muted-foreground"
+                      >
+                        Tenho projeto que comprova esta competência
+                      </Label>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void handleAddCandidateSkill()}
+                      disabled={!newSkillId || saveCandidateSkill.isPending}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Adicionar
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
