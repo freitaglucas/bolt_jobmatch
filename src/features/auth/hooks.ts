@@ -10,12 +10,11 @@ import {
 import { supabase } from '../../shared/lib/supabase';
 import {
   getSession,
-  mapAuthUser,
   signIn,
   signOut,
   signUp,
 } from './api';
-import type { SignInCredentials, SignUpCredentials } from './types';
+import type { AuthUser, SignInCredentials, SignUpCredentials } from './types';
 
 const authQueryKey = ['auth', 'session'] as const;
 const queryClient = new QueryClient({
@@ -34,10 +33,19 @@ function AuthSessionListener() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      client.setQueryData(
-        authQueryKey,
-        session ? mapAuthUser(session.user) : null,
-      );
+      if (!session) {
+        client.setQueryData(authQueryKey, null);
+        return;
+      }
+
+      const cachedUser = client.getQueryData<AuthUser | null>(authQueryKey);
+      if (cachedUser?.id !== session.user.id) {
+        client.setQueryData(authQueryKey, null);
+      }
+
+      queueMicrotask(() => {
+        void client.invalidateQueries({ queryKey: authQueryKey });
+      });
     });
 
     return () => subscription.unsubscribe();

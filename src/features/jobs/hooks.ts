@@ -1,14 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CandidateProfile, Job } from '../../lib/types';
+import { useQuery } from '@tanstack/react-query';
+import type { Job } from '../../lib/types';
+import type { CandidateSkill } from '../match/types';
 import { calculateSwipeMatch } from '../match/adapters/swipeMatchAdapter';
 import type { MatchResult } from '../match/types';
+import { getActiveJobs } from './api';
 import {
-  trackApplicationSubmitted,
   trackScoreSeen,
   trackSwipeDecision,
 } from '../telemetry/api';
 
 const SWIPE_THRESHOLD = 120;
+
+export function useActiveJobs() {
+  return useQuery({
+    queryKey: ['jobs', 'active'],
+    queryFn: getActiveJobs,
+    staleTime: 60_000,
+  });
+}
 
 export interface SwipeDeckCard {
   job: Job;
@@ -17,18 +27,26 @@ export interface SwipeDeckCard {
 
 export function useSwipeDeck(
   initialJobs: Job[],
-  candidate: CandidateProfile,
-  onApply: (job: Job) => void,
+  candidateSkills: CandidateSkill[],
+  onApply: (job: Job) => Promise<boolean>,
 ) {
   const [jobs, setJobs] = useState(initialJobs);
+  const [isApplying, setIsApplying] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const isApplyingRef = useRef(false);
   const lastSeenCard = useRef<string | null>(null);
+
+  useEffect(() => {
+    setJobs(initialJobs);
+    setAppliedJobIds(new Set());
+    lastSeenCard.current = null;
+  }, [initialJobs]);
 
   const cards: SwipeDeckCard[] = jobs
     .slice(0, 3)
-    .map((job) => ({ job, match: calculateSwipeMatch(job, candidate) }));
+    .map((job) => ({ job, match: calculateSwipeMatch(job, candidateSkills) }));
   const activeCard = cards[0] ?? null;
   const activeJobId = activeCard?.job.id;
   const activeScore = activeCard?.match.score;
@@ -49,28 +67,36 @@ export function useSwipeDeck(
     );
   }, [activeJobId, activeScore]);
 
-  const swipe = (direction: 'left' | 'right'): Job | null => {
+  const swipe = async (
+    direction: 'left' | 'right',
+  ): Promise<Job | null> => {
+    if (isApplyingRef.current) {
+      return null;
+    }
     const currentJob = jobs[0];
     if (!currentJob) {
       return null;
     }
-    const match = calculateSwipeMatch(currentJob, candidate);
+    const match = calculateSwipeMatch(currentJob, candidateSkills);
     const action = direction === 'right' ? 'like' : 'pass';
     void trackSwipeDecision(currentJob.id, match.score, action).catch(
       () => undefined,
     );
 
     if (direction === 'right') {
+      isApplyingRef.current = true;
+      setIsApplying(true);
+      let applicationAccepted: boolean;
+      try {
+        applicationAccepted = await onApply(currentJob);
+      } finally {
+        isApplyingRef.current = false;
+        setIsApplying(false);
+      }
+      if (!applicationAccepted) {
+        return null;
+      }
       setAppliedJobIds((previous) => new Set(previous).add(currentJob.id));
-      const mandatorySkillsMet = match.factors.every(
-        (factor) => factor.mandatory !== true || factor.declared > 0,
-      );
-      void trackApplicationSubmitted(
-        currentJob.id,
-        match.score,
-        mandatorySkillsMet,
-      ).catch(() => undefined);
-      onApply(currentJob);
     }
 
     setJobs((previous) => previous.slice(1));
@@ -80,12 +106,15 @@ export function useSwipeDeck(
   const handleDragEnd = (
     offsetX: number,
   ): 'left' | 'right' | null => {
+    if (isApplyingRef.current) {
+      return null;
+    }
     if (offsetX > SWIPE_THRESHOLD) {
-      swipe('right');
+      void swipe('right');
       return 'right';
     }
     if (offsetX < -SWIPE_THRESHOLD) {
-      swipe('left');
+      void swipe('left');
       return 'left';
     }
     return null;
@@ -94,12 +123,14 @@ export function useSwipeDeck(
   const reset = () => {
     setJobs(initialJobs);
     setAppliedJobIds(new Set());
+    lastSeenCard.current = null;
   };
 
   return {
     cards,
     currentJob: jobs[0] ?? null,
     appliedCount: appliedJobIds.size,
+    isApplying,
     passCurrent: () => swipe('left'),
     likeCurrent: () => swipe('right'),
     handleDragEnd,
