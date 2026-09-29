@@ -44,7 +44,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             Visão geral das suas vagas e candidatos
           </p>
         </div>
-        <Button className="bg-gradient-purple-teal text-white border-0 hover:opacity-90">
+        <Button
+          onClick={() => onNavigate('job-create')}
+          className="bg-gradient-purple-teal text-white border-0 hover:opacity-90"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova vaga
         </Button>

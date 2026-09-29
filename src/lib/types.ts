@@ -23,6 +23,10 @@ export interface Job {
   skills: SkillRequirement[];
   posted: string;
   tags: string[];
+  status: 'Rascunho' | 'Ativa' | 'Pausada' | 'Fechada';
+  candidatesCount: number;
+  newCandidatesCount: number;
+  interviewCount: number;
 }
 
 export type ApplicationStatus =

@@ -13,6 +13,8 @@ export type Screen =
   | 'applications'
   | 'profile'
   | 'dashboard'
+  | 'jobs'
+  | 'job-create'
   | 'pipeline'
   | 'tokens';
 
@@ -34,9 +36,10 @@ const candidateNav: { screen: Screen; label: string }[] = [
 
 const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'dashboard', label: 'Dashboard' },
+  { screen: 'jobs', label: 'Vagas' },
   { screen: 'pipeline', label: 'Pipeline' },
   { screen: 'tokens', label: 'Jornada' },
-];
+]
 
 export function Layout({
   children,
@@ -53,6 +56,7 @@ export function Layout({
 
   const activeScreen = useMemo(() => {
     if (screen === 'job-detail') return 'swipe';
+    if (screen === 'job-create') return 'jobs';
     return screen;
   }, [screen]);
 

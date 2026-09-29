@@ -19,6 +19,10 @@ export const mockJobs: Job[] = [
     matchScore: 65,
     posted: '2 dias atrás',
     tags: ['Inovação', 'Gestão de Projetos', 'Startups'],
+    status: 'Ativa',
+    candidatesCount: 14,
+    newCandidatesCount: 3,
+    interviewCount: 2,
     skills: [
       { name: 'Gestão de Projetos', level: 4, candidateLevel: 4, mandatory: true },
       { name: 'Inovação Aberta', level: 4, candidateLevel: 3, mandatory: true },
@@ -40,6 +44,10 @@ export const mockJobs: Job[] = [
     matchScore: 92,
     posted: '1 dia atrás',
     tags: ['Inovação', 'Startups', 'Ecossistema'],
+    status: 'Ativa',
+    candidatesCount: 22,
+    newCandidatesCount: 5,
+    interviewCount: 3,
     skills: [
       { name: 'Inovação Aberta', level: 4, candidateLevel: 4, mandatory: true },
       { name: 'Gestão de Projetos', level: 4, candidateLevel: 4, mandatory: true },
@@ -61,6 +69,10 @@ export const mockJobs: Job[] = [
     matchScore: 18,
     posted: '5 dias atrás',
     tags: ['Node.js', 'PostgreSQL', 'AWS'],
+    status: 'Ativa',
+    candidatesCount: 8,
+    newCandidatesCount: 1,
+    interviewCount: 0,
     skills: [
       { name: 'Node.js', level: 4, candidateLevel: 0, mandatory: true },
       { name: 'PostgreSQL', level: 4, candidateLevel: 0, mandatory: true },
@@ -82,6 +94,10 @@ export const mockJobs: Job[] = [
     matchScore: 78,
     posted: '3 dias atrás',
     tags: ['Parcerias', 'Estratégia', 'Relacionamento'],
+    status: 'Ativa',
+    candidatesCount: 11,
+    newCandidatesCount: 2,
+    interviewCount: 1,
     skills: [
       { name: 'Negociação', level: 4, candidateLevel: 4, mandatory: true },
       { name: 'Inovação Aberta', level: 3, candidateLevel: 3, mandatory: true },
@@ -91,6 +107,74 @@ export const mockJobs: Job[] = [
     ],
   },
 ];
+
+export const mockRecruiterJobs: Job[] = [
+  ...mockJobs,
+  {
+    id: 'job-5',
+    title: 'Coordenador de Projetos de Inovação',
+    company: 'SENAI',
+    location: 'São Paulo, SP',
+    salary: 'R$ 9.000 - 14.000',
+    type: 'CLT',
+    description: 'Coordenar portfólio de projetos de inovação, garantindo entregas no prazo e alinhamento estratégico.',
+    matchScore: 0,
+    posted: '7 dias atrás',
+    tags: ['Gestão de Projetos', 'Inovação', 'Coordenação'],
+    status: 'Pausada',
+    candidatesCount: 6,
+    newCandidatesCount: 0,
+    interviewCount: 1,
+    skills: [
+      { name: 'Gestão de Projetos', level: 4, candidateLevel: 0, mandatory: true },
+      { name: 'Liderança', level: 4, candidateLevel: 0, mandatory: true },
+      { name: 'Metodologias Ágeis', level: 3, candidateLevel: 0, mandatory: false },
+    ],
+  },
+  {
+    id: 'job-6',
+    title: 'Analista de Ecossistema',
+    company: 'TechHub Brasil',
+    location: 'Remoto',
+    salary: 'R$ 4.500 - 7.000',
+    type: 'Híbrido',
+    description: 'Mapear e analisar o ecossistema de startups, produzindo relatórios e insights para a equipe de inovação.',
+    matchScore: 0,
+    posted: '10 dias atrás',
+    tags: ['Ecossistema', 'Análise', 'Startups'],
+    status: 'Rascunho',
+    candidatesCount: 0,
+    newCandidatesCount: 0,
+    interviewCount: 0,
+    skills: [
+      { name: 'Inovação Aberta', level: 3, candidateLevel: 0, mandatory: true },
+      { name: 'Análise de Dados', level: 3, candidateLevel: 0, mandatory: false },
+    ],
+  },
+];
+
+export const mockJobCandidates: Record<string, PipelineCandidate[]> = {
+  'job-1': [
+    { id: 'jc1-1', name: 'Carla Mendes', role: 'Analista de Inovação', seniority: 'Pleno', matchScore: 78, appliedDate: '22 Set', stage: 'Triagem', avatarColor: 'bg-jm-orange' },
+    { id: 'jc1-2', name: 'Diego Ferreira', role: 'Consultor de Inovação', seniority: 'Especialista', matchScore: 88, appliedDate: '23 Set', stage: 'Triagem', avatarColor: 'bg-jm-purple' },
+    { id: 'jc1-3', name: 'Elena Rocha', role: 'Coordenadora de Projetos', seniority: 'Senior', matchScore: 71, appliedDate: '24 Set', stage: 'Em análise', avatarColor: 'bg-jm-teal' },
+  ],
+  'job-2': [
+    { id: 'jc2-1', name: 'Ana Silva', role: 'Analista de Parcerias', seniority: 'Pleno', matchScore: 92, appliedDate: '20 Set', stage: 'Entrevista', avatarColor: 'bg-jm-purple' },
+    { id: 'jc2-2', name: 'Bruno Costa', role: 'Gestor de Projetos', seniority: 'Senior', matchScore: 85, appliedDate: '21 Set', stage: 'Entrevista', avatarColor: 'bg-jm-teal' },
+    { id: 'jc2-3', name: 'Felipe Alves', role: 'Analista de Parcerias', seniority: 'Junior', matchScore: 55, appliedDate: '25 Set', stage: 'Em análise', avatarColor: 'bg-jm-orange' },
+    { id: 'jc2-4', name: 'Gabriela Nunes', role: 'Head de Inovação', seniority: 'Especialista', matchScore: 95, appliedDate: '26 Set', stage: 'Final', avatarColor: 'bg-jm-purple' },
+  ],
+  'job-3': [
+    { id: 'jc3-1', name: 'Henrique Dias', role: 'Desenvolvedor Full-stack', seniority: 'Senior', matchScore: 62, appliedDate: '25 Set', stage: 'Em análise', avatarColor: 'bg-jm-teal' },
+  ],
+  'job-4': [
+    { id: 'jc4-1', name: 'Ana Silva', role: 'Analista de Parcerias', seniority: 'Pleno', matchScore: 78, appliedDate: '27 Set', stage: 'Em análise', avatarColor: 'bg-jm-purple' },
+    { id: 'jc4-2', name: 'Bruno Costa', role: 'Gestor de Projetos', seniority: 'Senior', matchScore: 81, appliedDate: '26 Set', stage: 'Triagem', avatarColor: 'bg-jm-teal' },
+  ],
+  'job-5': [],
+  'job-6': [],
+};
 
 export const mockApplications: Application[] = [
   {
