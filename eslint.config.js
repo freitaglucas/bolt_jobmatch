@@ -24,5 +24,16 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+  },
+  // Preserve the generated UI component interfaces without weakening other lint rules.
+  {
+    files: [
+      'src/components/ui/command.tsx',
+      'src/components/ui/input.tsx',
+      'src/components/ui/textarea.tsx',
+    ],
+    rules: {
+      '@typescript-eslint/no-empty-object-type': 'off',
+    },
   }
 );

@@ -17,8 +17,10 @@ import {
   Sparkles,
   ChevronDown,
 } from 'lucide-react';
-import { mockJobs } from '@/lib/mock-data';
-import type { Job, SkillRequirement } from '@/lib/types';
+import { mockCandidate, mockJobs } from '@/lib/mock-data';
+import type { Job } from '@/lib/types';
+import { useSwipeDeck, type SwipeDeckCard } from '@/features/jobs/hooks';
+import type { MatchFactor } from '@/features/match/types';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -31,11 +33,11 @@ interface SwipeProps {
   onDetail: (job: Job) => void;
 }
 
-function SkillRow({ skill }: { skill: SkillRequirement }) {
+function SkillRow({ skill }: { skill: MatchFactor }) {
   const status =
-    skill.candidateLevel === 0
+    skill.declared === 0
       ? 'missing'
-      : skill.candidateLevel >= skill.level
+      : skill.declared >= skill.required
         ? 'match'
         : 'gap';
 
@@ -68,7 +70,7 @@ function SkillRow({ skill }: { skill: SkillRequirement }) {
       <Icon className={cn('h-4 w-4 shrink-0', c.color)} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-medium truncate">{skill.name}</span>
+          <span className="text-sm font-medium truncate">{skill.skill}</span>
           {skill.mandatory && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium">
               Obrigatória
@@ -76,8 +78,11 @@ function SkillRow({ skill }: { skill: SkillRequirement }) {
           )}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          Exigido: {skill.level} {skill.candidateLevel > 0 && `· Você: ${skill.candidateLevel}`}
-          {skill.candidateLevel === 0 && ' · Você não tem'}
+          Exigido: {skill.required} · Você: {skill.declared}
+          {' · '}Diferença: {skill.gap}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Contribuição ponderada: {skill.partial.toFixed(2)}
         </div>
       </div>
       <span className={cn('text-xs font-semibold', c.color)}>{c.label}</span>
@@ -86,33 +91,37 @@ function SkillRow({ skill }: { skill: SkillRequirement }) {
 }
 
 function JobCard({
-  job,
-  onSwipe,
+  card,
+  onDragEnd,
   onDetail,
   isTop,
   index,
 }: {
-  job: Job;
-  onSwipe: (direction: 'left' | 'right') => void;
+  card: SwipeDeckCard;
+  onDragEnd: (offsetX: number) => 'left' | 'right' | null;
   onDetail: () => void;
   isTop: boolean;
   index: number;
 }) {
   const [exitX, setExitX] = useState(0);
+  const { job, match } = card;
 
   const handleDragEnd = (_: unknown, info: PanInfo) => {
-    if (info.offset.x > 120) {
-      setExitX(1000);
-      onSwipe('right');
-    } else if (info.offset.x < -120) {
-      setExitX(-1000);
-      onSwipe('left');
+    const direction = onDragEnd(info.offset.x);
+    if (direction) {
+      setExitX(direction === 'right' ? 1000 : -1000);
     }
   };
 
-  const matchSkills = job.skills.filter((s) => s.candidateLevel >= s.level).length;
-  const gapSkills = job.skills.filter((s) => s.candidateLevel > 0 && s.candidateLevel < s.level).length;
-  const missingSkills = job.skills.filter((s) => s.candidateLevel === 0).length;
+  const matchSkills = match.factors.filter(
+    (factor) => factor.declared >= factor.required,
+  ).length;
+  const gapSkills = match.factors.filter(
+    (factor) => factor.declared > 0 && factor.declared < factor.required,
+  ).length;
+  const missingSkills = match.factors.filter(
+    (factor) => factor.declared === 0,
+  ).length;
 
   return (
     <motion.div
@@ -141,7 +150,7 @@ function JobCard({
                   {job.company}
                 </div>
               </div>
-              <MatchScoreRing score={job.matchScore} size={72} />
+              <MatchScoreRing score={match.score} size={72} />
             </div>
 
             <div className="flex flex-wrap gap-3 mt-3 text-sm">
@@ -215,7 +224,7 @@ function JobCard({
 
             {/* Skills list */}
             <div className="space-y-2">
-              {job.skills.map((skill, i) => (
+              {match.factors.map((skill, i) => (
                 <SkillRow key={i} skill={skill} />
               ))}
             </div>
@@ -238,23 +247,8 @@ function JobCard({
 }
 
 export function Swipe({ onApply, onDetail }: SwipeProps) {
-  const [jobs, setJobs] = useState<Job[]>(mockJobs);
-  const [appliedJobs, setAppliedJobs] = useState<Set<string>>(new Set());
-
-  const handleSwipe = (direction: 'left' | 'right') => {
-    if (direction === 'right' && jobs[0]) {
-      setAppliedJobs((prev) => new Set(prev).add(jobs[0].id));
-    }
-    setJobs((prev) => prev.slice(1));
-  };
-
-  const handleApply = () => {
-    if (jobs[0]) {
-      setAppliedJobs((prev) => new Set(prev).add(jobs[0].id));
-      onApply(jobs[0]);
-      setJobs((prev) => prev.slice(1));
-    }
-  };
+  const deck = useSwipeDeck(mockJobs, mockCandidate, onApply);
+  const currentJob = deck.currentJob;
 
   return (
     <div className="max-w-md mx-auto px-4 py-6">
@@ -268,7 +262,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
       {/* Card stack */}
       <div className="relative h-[560px] mb-6">
         <AnimatePresence>
-          {jobs.length === 0 ? (
+          {deck.cards.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -279,29 +273,26 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
               </div>
               <h3 className="text-lg font-semibold mb-2">Você viu todas as vagas!</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                {appliedJobs.size > 0
-                  ? `Você se candidatou a ${appliedJobs.size} vaga${appliedJobs.size > 1 ? 's' : ''}.`
+                {deck.appliedCount > 0
+                  ? `Você se candidatou a ${deck.appliedCount} vaga${deck.appliedCount > 1 ? 's' : ''}.`
                   : 'Volte mais tarde para novas oportunidades.'}
               </p>
               <Button
                 variant="outline"
                 onClick={() => {
-                  setJobs(mockJobs);
-                  setAppliedJobs(new Set());
+                  deck.reset();
                 }}
               >
                 Ver vagas novamente
               </Button>
             </motion.div>
           ) : (
-            jobs
-              .slice(0, 3)
-              .map((job, index) => (
+            deck.cards.map((card, index) => (
                 <JobCard
-                  key={job.id}
-                  job={job}
-                  onSwipe={handleSwipe}
-                  onDetail={() => onDetail(job)}
+                  key={card.job.id}
+                  card={card}
+                  onDragEnd={deck.handleDragEnd}
+                  onDetail={() => onDetail(card.job)}
                   isTop={index === 0}
                   index={index}
                 />
@@ -311,19 +302,19 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
       </div>
 
       {/* Action buttons */}
-      {jobs.length > 0 && (
+      {currentJob && (
         <div className="flex items-center justify-center gap-4">
           <Button
             size="icon"
             variant="outline"
-            onClick={() => handleSwipe('left')}
+            onClick={deck.passCurrent}
             className="h-14 w-14 rounded-full border-2 border-destructive/30 hover:border-destructive hover:bg-destructive/10 group"
           >
             <X className="h-6 w-6 text-destructive group-hover:scale-110 transition-transform" />
           </Button>
           <Button
             size="icon"
-            onClick={handleApply}
+            onClick={deck.likeCurrent}
             className="h-16 w-16 rounded-full bg-gradient-purple-teal border-0 hover:opacity-90 shadow-lg group"
           >
             <Heart className="h-7 w-7 text-white group-hover:scale-110 transition-transform" />
@@ -331,7 +322,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
           <Button
             size="icon"
             variant="outline"
-            onClick={() => onDetail(jobs[0])}
+            onClick={() => onDetail(currentJob)}
             className="h-14 w-14 rounded-full border-2 border-primary/30 hover:border-primary hover:bg-primary/10 group"
           >
             <Info className="h-6 w-6 text-primary group-hover:scale-110 transition-transform" />

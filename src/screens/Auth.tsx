@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, Briefcase, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
+import { useAuth } from '@/features/auth/hooks';
+import { SignInSchema, SignUpSchema } from '@/features/auth/schemas';
 
 interface AuthProps {
   onLogin: (role: Role) => void;
@@ -18,6 +20,54 @@ interface AuthProps {
 export function Auth({ onLogin, onBack }: AuthProps) {
   const [role, setRole] = useState<Role>('candidate');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const auth = useAuth();
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    setNotice(null);
+
+    try {
+      if (mode === 'login') {
+        const credentials = SignInSchema.parse({ email, password });
+        const user = await auth.signIn(credentials);
+        if (!user.role) {
+          throw new Error(
+            'Esta conta não tem um perfil candidato/recrutador associado. Entre em contato com o suporte.',
+          );
+        }
+        onLogin(user.role);
+        return;
+      }
+
+      const credentials = SignUpSchema.parse({
+        email,
+        password,
+        fullName,
+        role,
+      });
+      const result = await auth.signUp(credentials);
+      if (result.requiresEmailConfirmation) {
+        setNotice('Conta criada. Confirme seu e-mail antes de entrar.');
+        return;
+      }
+      if (!result.user.role) {
+        throw new Error('Não foi possível identificar o perfil da conta criada.');
+      }
+      onLogin(result.user.role);
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível concluir a autenticação. Tente novamente.',
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -48,6 +98,7 @@ export function Auth({ onLogin, onBack }: AuthProps) {
               {/* Role toggle */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6">
                 <button
+                  type="button"
                   onClick={() => setRole('candidate')}
                   className={cn(
                     'flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all',
@@ -60,6 +111,7 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                   Candidato
                 </button>
                 <button
+                  type="button"
                   onClick={() => setRole('recruiter')}
                   className={cn(
                     'flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all',
@@ -74,13 +126,21 @@ export function Auth({ onLogin, onBack }: AuthProps) {
               </div>
 
               {/* Form */}
-              <div className="space-y-4">
+              <form className="space-y-4" onSubmit={submit}>
                 {mode === 'signup' && (
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="name" placeholder="Seu nome" className="pl-9" defaultValue={role === 'candidate' ? 'Ana Silva' : 'Marina Costa'} />
+                      <Input
+                        id="name"
+                        placeholder="Seu nome"
+                        className="pl-9"
+                        autoComplete="name"
+                        value={fullName}
+                        onChange={(event) => setFullName(event.target.value)}
+                        required
+                      />
                     </div>
                   </div>
                 )}
@@ -88,29 +148,63 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                   <Label htmlFor="email">E-mail</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" placeholder="voce@email.com" className="pl-9" defaultValue={role === 'candidate' ? 'ana.silva@email.com' : 'marina@techhub.com'} />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="voce@email.com"
+                      className="pl-9"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      required
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="password" type="password" placeholder="********" className="pl-9" defaultValue="demo1234" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Sua senha"
+                      className="pl-9"
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={6}
+                      required
+                    />
                   </div>
                 </div>
-              </div>
-
-              <Button
-                onClick={() => onLogin(role)}
-                className="w-full mt-6 bg-gradient-purple-teal text-white border-0 hover:opacity-90"
-                size="lg"
-              >
-                {mode === 'login' ? 'Entrar' : 'Criar conta'}
-              </Button>
+                {formError && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {formError}
+                  </p>
+                )}
+                {notice && (
+                  <p role="status" className="text-sm text-jm-teal">
+                    {notice}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={auth.isSigningIn || auth.isSigningUp}
+                  className="w-full mt-6 bg-gradient-purple-teal text-white border-0 hover:opacity-90"
+                  size="lg"
+                >
+                  {auth.isSigningIn || auth.isSigningUp
+                    ? 'Aguarde...'
+                    : mode === 'login'
+                      ? 'Entrar'
+                      : 'Criar conta'}
+                </Button>
+              </form>
 
               <p className="text-center text-sm text-muted-foreground mt-4">
                 {mode === 'login' ? 'Ainda não tem conta?' : 'Já tem uma conta?'}{' '}
                 <button
+                  type="button"
                   onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
                   className="text-primary font-medium hover:underline"
                 >
@@ -118,18 +212,6 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                 </button>
               </p>
 
-              <div className="mt-6 pt-6 border-t border-border text-center">
-                <p className="text-xs text-muted-foreground mb-3">
-                  Protótipo - entre direto sem cadastro
-                </p>
-                <Button
-                  onClick={() => onLogin(role)}
-                  variant="outline"
-                  className="w-full"
-                >
-                  Entrar como {role === 'candidate' ? 'candidato' : 'recrutador'}
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </motion.div>
