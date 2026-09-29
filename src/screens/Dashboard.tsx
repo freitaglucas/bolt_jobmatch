@@ -13,6 +13,9 @@ import {
   KanbanSquare,
   Coins,
   Plus,
+  Clock,
+  DollarSign,
+  HeartHandshake,
 } from 'lucide-react';
 import { recruiterStats, mockPipelineCandidates, mockTokenEvents } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
@@ -28,6 +31,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     { label: 'Candidaturas', value: recruiterStats.totalApplications, icon: Users, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
     { label: 'Novas', value: recruiterStats.newApplications, icon: UserPlus, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
     { label: 'Entrevistas', value: recruiterStats.interviews, icon: Calendar, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
+  ];
+
+  const hireStats = [
+    { label: 'Vagas fechadas', value: recruiterStats.closedJobs, icon: Briefcase, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
+    { label: 'Tempo médio', value: `${recruiterStats.avgTimeToHire}d`, icon: Clock, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
+    { label: 'Custo médio', value: `R$ ${(recruiterStats.avgCostPerHire / 1000).toFixed(1)}k`, icon: DollarSign, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
+    { label: 'Tokens ganhos', value: `+${recruiterStats.totalTokensFromHires}`, icon: Coins, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
   ];
 
   const topCandidates = [...mockPipelineCandidates]
@@ -79,8 +89,39 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         ))}
       </div>
 
+      {/* Hire metrics */}
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Métricas de contratação
+        </h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {hireStats.map((stat, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.08 }}
+            >
+              <Card className="border-border hover:border-primary/20 transition-all">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-2xl font-bold">{stat.value}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
+                    </div>
+                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', stat.bg)}>
+                      <stat.icon className={cn('h-5 w-5', stat.color)} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
       {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card
           className="border-border cursor-pointer hover:border-primary/30 transition-all group"
           onClick={() => onNavigate('pipeline')}
@@ -93,6 +134,24 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <h3 className="font-semibold">Pipeline de candidatos</h3>
               <p className="text-sm text-muted-foreground">
                 Gerencie o funil com drag & drop
+              </p>
+            </div>
+            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border-border cursor-pointer hover:border-primary/30 transition-all group"
+          onClick={() => onNavigate('post-hire')}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-xl bg-jm-orange/10 flex items-center justify-center">
+              <HeartHandshake className="h-7 w-7 text-jm-orange" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold">Pós-contratação</h3>
+              <p className="text-sm text-muted-foreground">
+                Acompanhe os 3 meses de experiência
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />

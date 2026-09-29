@@ -69,7 +69,13 @@ export interface PostHireRecord {
   performanceRating: number;
   manager: string;
   checkpoints: PostHireCheckpoint[];
-  feedback: string[];
+  feedback: PostHireFeedback[];
+}
+
+export interface PostHireFeedback {
+  author: string;
+  text: string;
+  date: string;
 }
 
 export type ApplicationStatus =

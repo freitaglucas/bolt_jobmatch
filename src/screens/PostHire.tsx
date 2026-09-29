@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   Clock,
@@ -21,13 +19,12 @@ import {
   User,
   Briefcase,
   Coins,
-  Heart,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import { mockPostHireRecords, recruiterStats } from '@/lib/mock-data';
-import type { PostHireRecord, PostHireCheckpoint, CheckpointStatus } from '@/lib/types';
+import type { PostHireRecord, PostHireCheckpoint, PostHireFeedback, CheckpointStatus } from '@/lib/types';
 
 interface PostHireProps {
   onBack: () => void;
@@ -50,12 +47,6 @@ const checkpointColors: Record<CheckpointStatus, { icon: string; bg: string; tex
 export function PostHire({ onBack }: PostHireProps) {
   const [selectedId, setSelectedId] = useState<string | null>(mockPostHireRecords[0]?.id ?? null);
   const selected = mockPostHireRecords.find((r) => r.id === selectedId) ?? null;
-
-  const closedJobs = mockPostHireRecords.length;
-  const avgTime = Math.round(mockPostHireRecords.reduce((s, r) => {
-    const job = recruiterStats;
-    return s;
-  }, 0) / closedJobs);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -272,7 +263,7 @@ function PostHireDetail({ record }: { record: PostHireRecord }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {record.feedback.map((fb, i) => (
+          {record.feedback.map((fb: PostHireFeedback, i: number) => (
             <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold">{fb.author}</span>

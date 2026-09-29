@@ -16,6 +16,7 @@ export type Screen =
   | 'jobs'
   | 'job-create'
   | 'pipeline'
+  | 'post-hire'
   | 'tokens';
 
 interface LayoutProps {
@@ -38,6 +39,7 @@ const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'dashboard', label: 'Dashboard' },
   { screen: 'jobs', label: 'Vagas' },
   { screen: 'pipeline', label: 'Pipeline' },
+  { screen: 'post-hire', label: 'Pós-contratação' },
   { screen: 'tokens', label: 'Jornada' },
 ]
 
@@ -59,6 +61,7 @@ export function Layout({
     if (screen === 'job-create') return 'jobs';
     return screen;
   }, [screen]);
+
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

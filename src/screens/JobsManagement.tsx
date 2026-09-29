@@ -23,6 +23,9 @@ import {
   Trash2,
   ArrowRight,
   CheckCircle2,
+  Clock,
+  DollarSign,
+  UserCheck,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -60,7 +63,7 @@ export function JobsManagement({
 }: JobsManagementProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'Ativa' | 'Pausada' | 'Rascunho'>('all');
+  const [filter, setFilter] = useState<'all' | 'Ativa' | 'Pausada' | 'Rascunho' | 'Fechada'>('all');
 
   const filteredJobs = filter === 'all' ? jobs : jobs.filter((j) => j.status === filter);
   const stages = pipelineColumns.map((c) => c.stage) as ApplicationStatus[];
@@ -86,7 +89,7 @@ export function JobsManagement({
 
       {/* Filters */}
       <div className="flex gap-2 mb-6">
-        {(['all', 'Ativa', 'Pausada', 'Rascunho'] as const).map((f) => (
+        {(['all', 'Ativa', 'Pausada', 'Rascunho', 'Fechada'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -222,6 +225,65 @@ export function JobsManagement({
                           {tag}
                         </Badge>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Closed job hire metrics */}
+                  {job.status === 'Fechada' && job.hire && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0', job.hire.candidateAvatarColor)}>
+                          {job.hire.candidateName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">{job.hire.candidateName}</span>
+                          <span className="text-xs text-muted-foreground ml-2">foi contratado(a)</span>
+                        </div>
+                        <Badge className="bg-jm-teal/15 text-jm-teal border-0 shrink-0">
+                          <UserCheck className="h-3 w-3 mr-1" />
+                          Fechada
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-2.5 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                            <Clock className="h-3 w-3" />
+                            Tempo de contratação
+                          </div>
+                          <div className="text-sm font-bold">{job.hire.timeToHireDays} dias</div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                            <DollarSign className="h-3 w-3" />
+                            Custo por contratação
+                          </div>
+                          <div className="text-sm font-bold">R$ {job.hire.costPerHire.toLocaleString('pt-BR')}</div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                            <Coins className="h-3 w-3" />
+                            Salário negociado
+                          </div>
+                          <div className="text-sm font-bold">{job.hire.salaryNegotiated}</div>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-0.5">
+                            <ArrowRight className="h-3 w-3" />
+                            Tokens ganhos
+                          </div>
+                          <div className="text-sm font-bold text-jm-teal">+{job.hire.tokensEarned}</div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-3"
+                        onClick={() => onNavigate('post-hire')}
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                        Ver jornada pós-contratação
+                        <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                      </Button>
                     </div>
                   )}
                 </CardContent>
