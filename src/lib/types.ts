@@ -110,6 +110,17 @@ export interface CandidateSkill {
   level: number; // 1-5
 }
 
+export interface WorkExperience {
+  id: string;
+  company: string;
+  position: string;
+  startDate: string; // YYYY-MM
+  endDate: string | null; // null = current
+  current: boolean;
+  description: string;
+  competencies: string[];
+}
+
 export interface CandidateProfile {
   name: string;
   role: string;
@@ -118,6 +129,7 @@ export interface CandidateProfile {
   location: string;
   bio: string;
   skills: CandidateSkill[];
+  workExperiences: WorkExperience[];
   projects: { title: string; description: string; link: string }[];
   links: { label: string; url: string }[];
 }

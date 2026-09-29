@@ -424,6 +424,38 @@ export const mockCandidate: CandidateProfile = {
     { name: 'Pitch', level: 3 },
     { name: 'Estratégia', level: 4 },
   ],
+  workExperiences: [
+    {
+      id: 'we-1',
+      company: 'TechHub Brasil',
+      position: 'Analista de Parcerias',
+      startDate: '2024-01',
+      endDate: null,
+      current: true,
+      description: 'Gestão de parcerias estratégicas com startups e universidades. Estruturação de programas de inovação aberta e eventos de conexão.',
+      competencies: ['Inovação Aberta', 'Gestão de Projetos', 'Negociação', 'Mapeamento'],
+    },
+    {
+      id: 'we-2',
+      company: 'SENAI',
+      position: 'Coordenadora de Inovação',
+      startDate: '2021-03',
+      endDate: '2023-12',
+      current: false,
+      description: 'Coordenei portfólio de 15+ projetos de inovação. Liderei equipe de 4 analistas. Organizei hackathons e programas de aceleração.',
+      competencies: ['Liderança', 'Metodologias Ágeis', 'Design Thinking', 'Apresentações'],
+    },
+    {
+      id: 'we-3',
+      company: 'ConnectaLab',
+      position: 'Analista de Projetos Junior',
+      startDate: '2019-06',
+      endDate: '2021-02',
+      current: false,
+      description: 'Apoio na gestão de projetos de inovação, mapeamento de ecossistema e produção de relatórios para stakeholders.',
+      competencies: ['Análise de Dados', 'Canvas', 'Estratégia', 'Pitch'],
+    },
+  ],
   projects: [
     {
       title: 'Programa de Aceleração 2025',
