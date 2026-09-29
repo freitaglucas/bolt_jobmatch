@@ -27,6 +27,49 @@ export interface Job {
   candidatesCount: number;
   newCandidatesCount: number;
   interviewCount: number;
+  hire?: HireInfo;
+}
+
+export interface HireInfo {
+  candidateName: string;
+  candidateAvatarColor: string;
+  matchScore: number;
+  hireDate: string;
+  timeToHireDays: number;
+  costPerHire: number;
+  salaryNegotiated: string;
+  tokensEarned: number;
+}
+
+export type PostHirePhase = 'Onboarding' | '30 dias' | '60 dias' | '90 dias' | 'Confirmado';
+
+export type CheckpointStatus = 'completed' | 'in_progress' | 'pending' | 'at_risk';
+
+export interface PostHireCheckpoint {
+  phase: PostHirePhase;
+  label: string;
+  status: CheckpointStatus;
+  date: string;
+  notes: string;
+  rating?: number;
+}
+
+export interface PostHireRecord {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  company: string;
+  candidateName: string;
+  candidateAvatarColor: string;
+  matchScore: number;
+  hireDate: string;
+  daysSinceHire: number;
+  currentPhase: PostHirePhase;
+  onboardingProgress: number;
+  performanceRating: number;
+  manager: string;
+  checkpoints: PostHireCheckpoint[];
+  feedback: string[];
 }
 
 export type ApplicationStatus =
