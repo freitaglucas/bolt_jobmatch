@@ -80,5 +80,20 @@ jobs:
       - name: Start local Supabase stack
         run: supabase db start
 
+      - name: Expose local database URL
+        run: supabase status -o env DB_URL >> "$GITHUB_ENV"
+
+      - name: Re-run seeds to verify idempotency
+        # Executa os dois arquivos de seed uma segunda vez (o `supabase db
+        # start` acima ja aplicou migracoes + seeds uma primeira vez). Os
+        # testes pgTAP a seguir conferem as contagens finais (ex.: exatamente
+        # 50 vagas do recrutador de teste, sem nomes de skill duplicados) —
+        # se algum insert do seed nao fosse idempotente, essa segunda
+        # execucao teria duplicado linhas e essas contagens quebrariam.
+        run: |
+          command -v psql >/dev/null 2>&1 || (sudo apt-get update -y && sudo apt-get install -y --no-install-recommends postgresql-client)
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seeds/01_skills.sql
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/seeds/02_test_recruiter_and_jobs.sql
+
       - name: Run pgTAP RLS tests
         run: supabase test db

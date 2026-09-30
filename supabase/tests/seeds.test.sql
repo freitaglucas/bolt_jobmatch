@@ -1,23 +1,27 @@
 -- pgTAP: verifica os seeds de skills (0.3) e do recrutador/vagas de teste (0.4)
 --
--- Roda dentro do job `db-tests` do CI (.github/workflows/ci.yml), via
--- `supabase test db` (script npm "test:db"). Esse comando primeiro reseta o
--- banco local, aplicando as migrações e depois os seeds configurados em
--- supabase/config.toml ([db.seed].sql_paths), e só então executa os
--- arquivos .sql de supabase/tests/. Ou seja, quando este teste roda, os
--- dados do seed já estão persistidos no banco — não é necessário recriar
--- fixtures manualmente para a maioria das checagens abaixo.
+-- Roda dentro do job `db-tests` do CI (.github/workflows/ci.yml). O passo
+-- anterior `supabase db start` inicializa o banco local do zero, aplicando
+-- as migrações e depois os seeds configurados em supabase/config.toml
+-- ([db.seed].sql_paths); só então o passo `supabase test db` conecta nesse
+-- banco já populado e executa os arquivos .sql de supabase/tests/. Ou seja,
+-- quando este teste roda, os dados do seed já estão persistidos no banco —
+-- não é necessário recriar fixtures manualmente para a maioria das
+-- checagens abaixo.
 --
--- A checagem de idempotência reexecuta os dois arquivos de seed via `\i`
--- (comando do psql, que resolve o caminho relativo ao diretório de onde o
--- processo foi iniciado — a raiz do repositório, que é onde o job db-tests
--- roda `supabase test db`) e confirma que as contagens não mudam.
+-- A idempotência dos seeds é verificada pelo próprio job `db-tests` do CI
+-- (.github/workflows/ci.yml): ele roda os dois arquivos de seed uma segunda
+-- vez via `psql -f`, depois de `supabase db start` já ter aplicado migrações
+-- + seeds uma primeira vez, e só então executa este arquivo de teste. Ou
+-- seja, as contagens abaixo (exatamente 50 vagas, total de skills, nomes
+-- sem duplicata) já refletem duas execuções do seed — se algum insert não
+-- fosse idempotente, essas contagens estariam erradas/duplicadas aqui.
 
 create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(12);
+select plan(9);
 
 -- ---------------------------------------------------------------------
 -- 0.3: skills
@@ -42,7 +46,7 @@ select is(
   (select count(*)::int from public.jobs
      where recruiter_id = '5eed0000-0000-4000-8000-000000000001'),
   50,
-  'existem exatamente 50 vagas do recrutador de teste'
+  'existem exatamente 50 vagas do recrutador de teste (confirma idempotencia: CI ja rodou o seed 2x antes deste teste)'
 );
 
 select is(
@@ -102,46 +106,6 @@ select ok(
 select ok(
   public.is_approved_recruiter('5eed0000-0000-4000-8000-000000000001'),
   'is_approved_recruiter retorna true para o recrutador de teste'
-);
-
--- ---------------------------------------------------------------------
--- Idempotencia: reexecutar os seeds nao deve alterar as contagens
--- ---------------------------------------------------------------------
-
-create temp table idempotency_before as
-select
-  (select count(*) from public.skills) as skills_count,
-  (select count(*) from public.jobs
-     where recruiter_id = '5eed0000-0000-4000-8000-000000000001') as jobs_count,
-  (select count(*) from public.job_skills js
-     join public.jobs j on j.id = js.job_id
-     where j.recruiter_id = '5eed0000-0000-4000-8000-000000000001') as job_skills_count;
-
--- Caminho relativo ao diretorio deste proprio arquivo de teste
--- (supabase/tests/), pois o psql resolve \i relativo ao script em execucao,
--- nao ao diretorio de onde `supabase test db` foi chamado.
-\i ../seeds/01_skills.sql
-\i ../seeds/02_test_recruiter_and_jobs.sql
-
-select is(
-  (select count(*) from public.skills),
-  (select skills_count from idempotency_before),
-  'reexecutar o seed de skills nao muda o total de skills'
-);
-
-select is(
-  (select count(*) from public.jobs
-     where recruiter_id = '5eed0000-0000-4000-8000-000000000001'),
-  (select jobs_count from idempotency_before),
-  'reexecutar o seed de vagas nao muda o total de vagas do recrutador de teste'
-);
-
-select is(
-  (select count(*) from public.job_skills js
-     join public.jobs j on j.id = js.job_id
-     where j.recruiter_id = '5eed0000-0000-4000-8000-000000000001'),
-  (select job_skills_count from idempotency_before),
-  'reexecutar o seed de vagas nao muda o total de job_skills do recrutador de teste'
 );
 
 select * from finish();

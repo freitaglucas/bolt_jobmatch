@@ -100,7 +100,7 @@ select throws_ok(
   $$insert into public.jobs (id, recruiter_id, title, employment_type, status)
     values ('f3000000-0000-0000-0000-000000000009', 'c3000000-0000-0000-0000-000000000005',
             'Vaga do R3', 'CLT', 'active')$$,
-  '42501',
+  '42501', NULL,
   'deve bloquear: recrutador nao aprovado (R3) nao cria vaga'
 );
 
@@ -124,7 +124,7 @@ select ok(true, 'deve permitir: candidato A se candidata a vaga ativa');
 select throws_ok(
   $$insert into public.applications (job_id, candidate_id)
     values ('f1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001')$$,
-  '42501',
+  '42501', NULL,
   'deve bloquear: candidato A nao se candidata a vaga em rascunho (inativa)'
 );
 
@@ -163,7 +163,7 @@ select throws_ok(
     values ('f9000000-0000-0000-0000-000000000009',
             (select id from test_refs where key = 'app_a'),
             'c2000000-0000-0000-0000-000000000004', 'Tentativa indevida')$$,
-  '42501',
+  '42501', NULL,
   'deve bloquear: R2 nao registra feedback em candidatura de vaga do R1'
 );
 
@@ -186,7 +186,7 @@ select throws_ok(
   $$insert into public.event_log (id, user_id, session_id, event_type, target_type, target_id)
     values ('e9000000-0000-0000-0000-000000000009', 'b0000000-0000-0000-0000-000000000002',
             gen_random_uuid(), 'swipe_decision', 'job', 'f1000000-0000-0000-0000-000000000001')$$,
-  '42501',
+  '42501', NULL,
   'deve bloquear: candidato A nao insere evento em nome do candidato B'
 );
 
@@ -216,20 +216,19 @@ select is(
   (select count(*)::int from public.profiles where id = 'b0000000-0000-0000-0000-000000000002'),
   0, 'deve bloquear: candidato A nao le o profile do candidato B'
 );
-select is(
-  (with upd as (
-    update public.profiles set full_name = 'Candidata A Atualizada'
-    where id = 'a0000000-0000-0000-0000-000000000001' returning 1
-  ) select count(*)::int from upd),
-  1, 'deve permitir: candidato A atualiza o proprio profile'
-);
-select is(
-  (with upd as (
-    update public.profiles set full_name = 'Hack'
-    where id = 'b0000000-0000-0000-0000-000000000002' returning 1
-  ) select count(*)::int from upd),
-  0, 'deve bloquear: candidato A nao atualiza o profile do candidato B'
-);
+with upd as (
+  update public.profiles set full_name = 'Candidata A Atualizada'
+  where id = 'a0000000-0000-0000-0000-000000000001' returning 1
+)
+select count(*)::int as upd_profile_a from upd \gset
+select is(:upd_profile_a, 1, 'deve permitir: candidato A atualiza o proprio profile');
+
+with upd as (
+  update public.profiles set full_name = 'Hack'
+  where id = 'b0000000-0000-0000-0000-000000000002' returning 1
+)
+select count(*)::int as upd_profile_b from upd \gset
+select is(:upd_profile_b, 0, 'deve bloquear: candidato A nao atualiza o profile do candidato B');
 
 reset role;
 
@@ -248,20 +247,19 @@ select is(
   (select count(*)::int from public.candidate_profiles where user_id = 'b0000000-0000-0000-0000-000000000002'),
   0, 'deve bloquear: candidato A nao le o candidate_profile do candidato B'
 );
-select is(
-  (with upd as (
-    update public.candidate_profiles set bio = 'Atualizado por A'
-    where user_id = 'a0000000-0000-0000-0000-000000000001' returning 1
-  ) select count(*)::int from upd),
-  1, 'deve permitir: candidato A atualiza o proprio candidate_profile'
-);
-select is(
-  (with upd as (
-    update public.candidate_profiles set bio = 'Hack'
-    where user_id = 'b0000000-0000-0000-0000-000000000002' returning 1
-  ) select count(*)::int from upd),
-  0, 'deve bloquear: candidato A nao atualiza o candidate_profile do candidato B'
-);
+with upd as (
+  update public.candidate_profiles set bio = 'Atualizado por A'
+  where user_id = 'a0000000-0000-0000-0000-000000000001' returning 1
+)
+select count(*)::int as upd_cand_profile_a from upd \gset
+select is(:upd_cand_profile_a, 1, 'deve permitir: candidato A atualiza o proprio candidate_profile');
+
+with upd as (
+  update public.candidate_profiles set bio = 'Hack'
+  where user_id = 'b0000000-0000-0000-0000-000000000002' returning 1
+)
+select count(*)::int as upd_cand_profile_b from upd \gset
+select is(:upd_cand_profile_b, 0, 'deve bloquear: candidato A nao atualiza o candidate_profile do candidato B');
 
 -- D) candidato A nao ve skills nem candidaturas do candidato B
 select is(
@@ -298,20 +296,19 @@ select is(
   (select count(*)::int from public.recruiter_profiles where user_id = 'c2000000-0000-0000-0000-000000000004'),
   0, 'deve bloquear: R1 nao le o recruiter_profile do R2'
 );
-select is(
-  (with upd as (
-    update public.recruiter_profiles set "position" = 'Head de Talent Acquisition'
-    where user_id = 'c1000000-0000-0000-0000-000000000003' returning 1
-  ) select count(*)::int from upd),
-  1, 'deve permitir: R1 atualiza o proprio recruiter_profile'
-);
-select is(
-  (with upd as (
-    update public.recruiter_profiles set "position" = 'Hack'
-    where user_id = 'c2000000-0000-0000-0000-000000000004' returning 1
-  ) select count(*)::int from upd),
-  0, 'deve bloquear: R1 nao atualiza o recruiter_profile do R2'
-);
+with upd as (
+  update public.recruiter_profiles set "position" = 'Head de Talent Acquisition'
+  where user_id = 'c1000000-0000-0000-0000-000000000003' returning 1
+)
+select count(*)::int as upd_recruiter_a from upd \gset
+select is(:upd_recruiter_a, 1, 'deve permitir: R1 atualiza o proprio recruiter_profile');
+
+with upd as (
+  update public.recruiter_profiles set "position" = 'Hack'
+  where user_id = 'c2000000-0000-0000-0000-000000000004' returning 1
+)
+select count(*)::int as upd_recruiter_b from upd \gset
+select is(:upd_recruiter_b, 0, 'deve bloquear: R1 nao atualiza o recruiter_profile do R2');
 
 reset role;
 
@@ -343,20 +340,19 @@ select is(
   (select count(*)::int from public.applications where job_id = 'f2000000-0000-0000-0000-000000000003'),
   0, 'deve bloquear: R1 nao le candidaturas de vaga do R2'
 );
-select is(
-  (with upd as (
-    update public.applications set current_stage = 'interview'
-    where id = (select id from test_refs where key = 'app_a') returning 1
-  ) select count(*)::int from upd),
-  1, 'deve permitir: R1 move candidatura da propria vaga'
-);
-select is(
-  (with upd as (
-    update public.applications set current_stage = 'interview'
-    where id = (select id from test_refs where key = 'app_b') returning 1
-  ) select count(*)::int from upd),
-  0, 'deve bloquear: R1 nao move candidatura de vaga do R2'
-);
+with upd as (
+  update public.applications set current_stage = 'interview'
+  where id = (select id from test_refs where key = 'app_a') returning 1
+)
+select count(*)::int as upd_app_a from upd \gset
+select is(:upd_app_a, 1, 'deve permitir: R1 move candidatura da propria vaga');
+
+with upd as (
+  update public.applications set current_stage = 'interview'
+  where id = (select id from test_refs where key = 'app_b') returning 1
+)
+select count(*)::int as upd_app_b from upd \gset
+select is(:upd_app_b, 0, 'deve bloquear: R1 nao move candidatura de vaga do R2');
 
 reset role;
 
@@ -475,21 +471,21 @@ reset role;
 
 set local role anon;
 
-select throws_ok($$select 1 from public.profiles$$, '42501', 'anon nao acessa profiles');
-select throws_ok($$select 1 from public.user_roles$$, '42501', 'anon nao acessa user_roles');
-select throws_ok($$select 1 from public.companies$$, '42501', 'anon nao acessa companies');
-select throws_ok($$select 1 from public.candidate_profiles$$, '42501', 'anon nao acessa candidate_profiles');
-select throws_ok($$select 1 from public.recruiter_profiles$$, '42501', 'anon nao acessa recruiter_profiles');
-select throws_ok($$select 1 from public.skills$$, '42501', 'anon nao acessa skills');
-select throws_ok($$select 1 from public.jobs$$, '42501', 'anon nao acessa jobs');
-select throws_ok($$select 1 from public.job_skills$$, '42501', 'anon nao acessa job_skills');
-select throws_ok($$select 1 from public.candidate_skills$$, '42501', 'anon nao acessa candidate_skills');
-select throws_ok($$select 1 from public.applications$$, '42501', 'anon nao acessa applications');
-select throws_ok($$select 1 from public.application_stages$$, '42501', 'anon nao acessa application_stages');
-select throws_ok($$select 1 from public.feedbacks$$, '42501', 'anon nao acessa feedbacks');
-select throws_ok($$select 1 from public.consents$$, '42501', 'anon nao acessa consents');
-select throws_ok($$select 1 from public.event_log$$, '42501', 'anon nao acessa event_log');
-select throws_ok($$select 1 from public.audit_logs$$, '42501', 'anon nao acessa audit_logs');
+select throws_ok($$select 1 from public.profiles$$, '42501', NULL, 'anon nao acessa profiles');
+select throws_ok($$select 1 from public.user_roles$$, '42501', NULL, 'anon nao acessa user_roles');
+select throws_ok($$select 1 from public.companies$$, '42501', NULL, 'anon nao acessa companies');
+select throws_ok($$select 1 from public.candidate_profiles$$, '42501', NULL, 'anon nao acessa candidate_profiles');
+select throws_ok($$select 1 from public.recruiter_profiles$$, '42501', NULL, 'anon nao acessa recruiter_profiles');
+select throws_ok($$select 1 from public.skills$$, '42501', NULL, 'anon nao acessa skills');
+select throws_ok($$select 1 from public.jobs$$, '42501', NULL, 'anon nao acessa jobs');
+select throws_ok($$select 1 from public.job_skills$$, '42501', NULL, 'anon nao acessa job_skills');
+select throws_ok($$select 1 from public.candidate_skills$$, '42501', NULL, 'anon nao acessa candidate_skills');
+select throws_ok($$select 1 from public.applications$$, '42501', NULL, 'anon nao acessa applications');
+select throws_ok($$select 1 from public.application_stages$$, '42501', NULL, 'anon nao acessa application_stages');
+select throws_ok($$select 1 from public.feedbacks$$, '42501', NULL, 'anon nao acessa feedbacks');
+select throws_ok($$select 1 from public.consents$$, '42501', NULL, 'anon nao acessa consents');
+select throws_ok($$select 1 from public.event_log$$, '42501', NULL, 'anon nao acessa event_log');
+select throws_ok($$select 1 from public.audit_logs$$, '42501', NULL, 'anon nao acessa audit_logs');
 
 reset role;
 
