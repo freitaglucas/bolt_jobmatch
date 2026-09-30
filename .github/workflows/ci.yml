@@ -81,7 +81,9 @@ jobs:
         run: supabase db start
 
       - name: Expose local database URL
-        run: supabase status -o env DB_URL >> "$GITHUB_ENV"
+        # `-o env` imprime todas as variaveis (API_URL, DB_URL, ANON_KEY...);
+        # nao aceita um nome de variavel avulso como argumento posicional.
+        run: supabase status -o env >> "$GITHUB_ENV"
 
       - name: Re-run seeds to verify idempotency
         # Executa os dois arquivos de seed uma segunda vez (o `supabase db
