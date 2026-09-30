@@ -70,15 +70,15 @@ grant select, insert on test_refs to authenticated, anon;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "c1000000-0000-0000-0000-000000000003"}';
 
-select ok(
-  (with ins as (
-    insert into public.jobs (id, recruiter_id, title, employment_type, status)
-    values ('f1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003',
-            'Vaga ativa do R1', 'CLT', 'active')
-    returning true
-  ) select coalesce(bool_and(t), false) from ins t),
-  'deve permitir: recrutador aprovado (R1) cria vaga'
-);
+-- Nota: um WITH que modifica dados (insert/update/delete) nao pode ficar
+-- dentro de uma subquery passada como argumento de ok() -- o Postgres exige
+-- que fique no nivel mais externo da instrucao. Por isso o insert roda como
+-- instrucao top-level e o ok() so confirma que ele nao lancou erro de RLS.
+insert into public.jobs (id, recruiter_id, title, employment_type, status)
+values ('f1000000-0000-0000-0000-000000000001', 'c1000000-0000-0000-0000-000000000003',
+        'Vaga ativa do R1', 'CLT', 'active');
+
+select ok(true, 'deve permitir: recrutador aprovado (R1) cria vaga');
 
 insert into public.jobs (id, recruiter_id, title, employment_type, status)
 values ('f1000000-0000-0000-0000-000000000002', 'c1000000-0000-0000-0000-000000000003',
@@ -113,16 +113,13 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "a0000000-0000-0000-0000-000000000001"}';
 
-select ok(
-  (with ins as (
-    insert into public.applications (job_id, candidate_id)
-    values ('f1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001')
-    returning id
-  ), saved as (
-    insert into test_refs (key, id) select 'app_a', id from ins returning id
-  ) select coalesce(bool_and(true), false) from saved),
-  'deve permitir: candidato A se candidata a vaga ativa'
-);
+with ins as (
+  insert into public.applications (job_id, candidate_id)
+  values ('f1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001')
+  returning id
+) insert into test_refs (key, id) select 'app_a', id from ins;
+
+select ok(true, 'deve permitir: candidato A se candidata a vaga ativa');
 
 select throws_ok(
   $$insert into public.applications (job_id, candidate_id)
@@ -150,16 +147,12 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "c1000000-0000-0000-0000-000000000003"}';
 
-select ok(
-  (with ins as (
-    insert into public.feedbacks (id, application_id, author_id, content)
-    values ('fe000000-0000-0000-0000-000000000001',
-            (select id from test_refs where key = 'app_a'),
-            'c1000000-0000-0000-0000-000000000003', 'Bom fit tecnico, seguir para entrevista.')
-    returning true
-  ) select coalesce(bool_and(t), false) from ins t),
-  'deve permitir: R1 registra feedback na propria vaga'
-);
+insert into public.feedbacks (id, application_id, author_id, content)
+values ('fe000000-0000-0000-0000-000000000001',
+        (select id from test_refs where key = 'app_a'),
+        'c1000000-0000-0000-0000-000000000003', 'Bom fit tecnico, seguir para entrevista.');
+
+select ok(true, 'deve permitir: R1 registra feedback na propria vaga');
 
 reset role;
 set local role authenticated;
@@ -183,15 +176,11 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "a0000000-0000-0000-0000-000000000001"}';
 
-select ok(
-  (with ins as (
-    insert into public.event_log (id, user_id, session_id, event_type, target_type, target_id)
-    values ('ee000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
-            gen_random_uuid(), 'swipe_decision', 'job', 'f1000000-0000-0000-0000-000000000001')
-    returning true
-  ) select coalesce(bool_and(t), false) from ins t),
-  'deve permitir: candidato A insere o proprio evento de telemetria'
-);
+insert into public.event_log (id, user_id, session_id, event_type, target_type, target_id)
+values ('ee000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001',
+        gen_random_uuid(), 'swipe_decision', 'job', 'f1000000-0000-0000-0000-000000000001');
+
+select ok(true, 'deve permitir: candidato A insere o proprio evento de telemetria');
 
 select throws_ok(
   $$insert into public.event_log (id, user_id, session_id, event_type, target_type, target_id)

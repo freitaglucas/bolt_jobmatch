@@ -117,8 +117,11 @@ select
      join public.jobs j on j.id = js.job_id
      where j.recruiter_id = '5eed0000-0000-4000-8000-000000000001') as job_skills_count;
 
-\i supabase/seeds/01_skills.sql
-\i supabase/seeds/02_test_recruiter_and_jobs.sql
+-- Caminho relativo ao diretorio deste proprio arquivo de teste
+-- (supabase/tests/), pois o psql resolve \i relativo ao script em execucao,
+-- nao ao diretorio de onde `supabase test db` foi chamado.
+\i ../seeds/01_skills.sql
+\i ../seeds/02_test_recruiter_and_jobs.sql
 
 select is(
   (select count(*) from public.skills),
