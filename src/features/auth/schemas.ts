@@ -10,4 +10,7 @@ export const SignInSchema = z.object({
 export const SignUpSchema = SignInSchema.extend({
   fullName: z.string().trim().min(1),
   role: UserRoleSchema,
+  consentAccepted: z.boolean().refine((value) => value === true, {
+    message: 'Você precisa aceitar os Termos de Uso e a Política de Privacidade.',
+  }),
 });

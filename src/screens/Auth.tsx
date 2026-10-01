@@ -4,12 +4,15 @@ import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, Briefcase, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
 import { useAuth } from '@/features/auth/hooks';
 import { SignInSchema, SignUpSchema } from '@/features/auth/schemas';
+import { ConsentDialog } from '@/features/consents/components/ConsentDialog';
+import { TCLE_DRAFT_NOTICE } from '@/features/consents/content';
 
 interface AuthProps {
   onLogin: (role: Role) => void;
@@ -25,6 +28,8 @@ export function Auth({ onLogin, onBack }: AuthProps) {
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
   const auth = useAuth();
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -50,6 +55,7 @@ export function Auth({ onLogin, onBack }: AuthProps) {
         password,
         fullName,
         role,
+        consentAccepted,
       });
       const result = await auth.signUp(credentials);
       if (result.requiresEmailConfirmation) {
@@ -177,6 +183,42 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                     />
                   </div>
                 </div>
+                {mode === 'signup' && (
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="consent"
+                        checked={consentAccepted}
+                        onCheckedChange={(value) => setConsentAccepted(value === true)}
+                      />
+                      <label
+                        htmlFor="consent"
+                        className="text-sm text-muted-foreground leading-snug"
+                      >
+                        Li e aceito os{' '}
+                        <button
+                          type="button"
+                          className="text-primary underline underline-offset-2"
+                          onClick={() => setTermsOpen(true)}
+                        >
+                          Termos de Uso
+                        </button>{' '}
+                        e a{' '}
+                        <button
+                          type="button"
+                          className="text-primary underline underline-offset-2"
+                          onClick={() => setTermsOpen(true)}
+                        >
+                          Política de Privacidade
+                        </button>
+                        .
+                      </label>
+                    </div>
+                    <p className="text-xs font-medium text-destructive">
+                      {TCLE_DRAFT_NOTICE}
+                    </p>
+                  </div>
+                )}
                 {formError && (
                   <p role="alert" className="text-sm text-destructive">
                     {formError}
@@ -189,7 +231,11 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                 )}
                 <Button
                   type="submit"
-                  disabled={auth.isSigningIn || auth.isSigningUp}
+                  disabled={
+                    auth.isSigningIn ||
+                    auth.isSigningUp ||
+                    (mode === 'signup' && !consentAccepted)
+                  }
                   className="w-full mt-6 bg-gradient-purple-teal text-white border-0 hover:opacity-90"
                   size="lg"
                 >
@@ -215,6 +261,7 @@ export function Auth({ onLogin, onBack }: AuthProps) {
             </CardContent>
           </Card>
         </motion.div>
+        <ConsentDialog open={termsOpen} onOpenChange={setTermsOpen} />
       </div>
     </div>
   );

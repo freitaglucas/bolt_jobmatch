@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../shared/lib/supabase';
 import { SignInSchema, SignUpSchema, UserRoleSchema } from './schemas';
+import { TCLE_POLICY_VERSION } from '../consents/content';
 import type {
   AuthUser,
   SignInCredentials,
@@ -60,6 +61,7 @@ export async function signUp(
       data: {
         full_name: validatedCredentials.fullName,
         role: validatedCredentials.role,
+        tcle_version: TCLE_POLICY_VERSION,
       },
     },
   });
