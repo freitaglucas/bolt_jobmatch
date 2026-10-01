@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Layout, type Screen } from '@/components/Layout';
 import { Landing } from '@/screens/Landing';
 import { Auth } from '@/screens/Auth';
+import { ResetPassword } from '@/screens/ResetPassword';
 import { Swipe } from '@/screens/Swipe';
 import { JobDetail } from '@/screens/JobDetail';
 import { Applications } from '@/screens/Applications';
@@ -39,8 +40,12 @@ function App() {
 
   const { toast } = useToast();
   const auth = useAuth();
+  const isResetPasswordRoute = window.location.pathname === '/reset-password';
 
   useEffect(() => {
+    if (isResetPasswordRoute) {
+      return;
+    }
     if (auth.isLoading || !auth.user) {
       return;
     }
@@ -51,7 +56,7 @@ function App() {
     } else {
       setAppState('auth');
     }
-  }, [auth.isLoading, auth.user]);
+  }, [auth.isLoading, auth.user, isResetPasswordRoute]);
 
   const toggleDark = () => {
     setDarkMode((prev) => {
@@ -151,6 +156,20 @@ function App() {
       description: 'A vaga foi removida da sua lista.',
     });
   };
+
+  if (isResetPasswordRoute) {
+    return (
+      <div className={darkMode ? '' : 'light'}>
+        <ResetPassword
+          onBackToLogin={() => {
+            window.history.replaceState(null, '', '/');
+            setAppState('auth');
+          }}
+        />
+        <Toaster />
+      </div>
+    );
+  }
 
   // Landing
   if (appState === 'landing') {
