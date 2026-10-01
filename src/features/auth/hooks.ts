@@ -10,9 +10,11 @@ import {
 import { supabase } from '../../shared/lib/supabase';
 import {
   getSession,
+  requestPasswordReset,
   signIn,
   signOut,
   signUp,
+  updatePassword,
 } from './api';
 import type { AuthUser, SignInCredentials, SignUpCredentials } from './types';
 
@@ -101,4 +103,12 @@ export function useAuth() {
     isSigningUp: signUpMutation.isPending,
     isSigningOut: signOutMutation.isPending,
   };
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({ mutationFn: requestPasswordReset });
+}
+
+export function useUpdatePassword() {
+  return useMutation({ mutationFn: updatePassword });
 }

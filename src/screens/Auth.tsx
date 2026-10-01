@@ -9,8 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Users, Briefcase, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
-import { useAuth } from '@/features/auth/hooks';
+import { useAuth, useRequestPasswordReset } from '@/features/auth/hooks';
 import { SignInSchema, SignUpSchema } from '@/features/auth/schemas';
+import { ZodError } from 'zod';
 import { ConsentDialog } from '@/features/consents/components/ConsentDialog';
 import { TCLE_DRAFT_NOTICE } from '@/features/consents/content';
 
@@ -30,12 +31,19 @@ export function Auth({ onLogin, onBack }: AuthProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
   const auth = useAuth();
+  const requestPasswordReset = useRequestPasswordReset();
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
     setNotice(null);
+    setConfirmPasswordError(null);
 
     try {
       if (mode === 'login') {
@@ -56,6 +64,7 @@ export function Auth({ onLogin, onBack }: AuthProps) {
         fullName,
         role,
         consentAccepted,
+        confirmPassword,
       });
       const result = await auth.signUp(credentials);
       if (result.requiresEmailConfirmation) {
@@ -67,6 +76,15 @@ export function Auth({ onLogin, onBack }: AuthProps) {
       }
       onLogin(result.user.role);
     } catch (error) {
+      if (error instanceof ZodError) {
+        const confirmPasswordIssue = error.issues.find(
+          (issue) => issue.path[0] === 'confirmPassword',
+        );
+        if (confirmPasswordIssue) {
+          setConfirmPasswordError(confirmPasswordIssue.message);
+          return;
+        }
+      }
       setFormError(
         error instanceof Error
           ? error.message
@@ -74,6 +92,85 @@ export function Auth({ onLogin, onBack }: AuthProps) {
       );
     }
   };
+
+  const submitForgot = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError(null);
+    await requestPasswordReset.mutateAsync(forgotEmail);
+    setForgotSent(true);
+  };
+
+  if (forgotPassword) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="px-4 h-16 flex items-center justify-between">
+          <button
+            onClick={() => {
+              setForgotPassword(false);
+              setForgotSent(false);
+            }}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+          <Logo size={28} />
+        </header>
+
+        <div className="flex-1 flex items-center justify-center px-4 py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="w-full max-w-md"
+          >
+            <Card className="border-border bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-8">
+                <h1 className="text-2xl font-bold text-center mb-2">Recuperar senha</h1>
+                <p className="text-sm text-muted-foreground text-center mb-6">
+                  Informe seu e-mail para receber o link de redefinição.
+                </p>
+
+                <form className="space-y-4" onSubmit={submitForgot}>
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">E-mail</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="voce@email.com"
+                        className="pl-9"
+                        autoComplete="email"
+                        value={forgotEmail}
+                        onChange={(event) => setForgotEmail(event.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {forgotSent && (
+                    <p role="status" className="text-sm text-jm-teal">
+                      Se esse e-mail estiver cadastrado, enviaremos um link para redefinir a senha.
+                    </p>
+                  )}
+
+                  <Button
+                    type="submit"
+                    disabled={requestPasswordReset.isPending}
+                    className="w-full mt-6 bg-gradient-purple-teal text-white border-0 hover:opacity-90"
+                    size="lg"
+                  >
+                    {requestPasswordReset.isPending ? 'Enviando...' : 'Enviar link'}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -183,6 +280,44 @@ export function Auth({ onLogin, onBack }: AuthProps) {
                     />
                   </div>
                 </div>
+                {mode === 'login' && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setForgotPassword(true)}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  </div>
+                )}
+                {mode === 'signup' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Repita sua senha"
+                        className="pl-9"
+                        autoComplete="new-password"
+                        value={confirmPassword}
+                        onChange={(event) => {
+                          setConfirmPassword(event.target.value);
+                          setConfirmPasswordError(null);
+                        }}
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                    {confirmPasswordError && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {confirmPasswordError}
+                      </p>
+                    )}
+                  </div>
+                )}
                 {mode === 'signup' && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-2">

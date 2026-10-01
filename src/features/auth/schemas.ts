@@ -13,4 +13,18 @@ export const SignUpSchema = SignInSchema.extend({
   consentAccepted: z.boolean().refine((value) => value === true, {
     message: 'Você precisa aceitar os Termos de Uso e a Política de Privacidade.',
   }),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'As senhas não conferem',
+  path: ['confirmPassword'],
 });
+
+export const ResetPasswordSchema = z
+  .object({
+    password: z.string().min(1),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não conferem',
+    path: ['confirmPassword'],
+  });

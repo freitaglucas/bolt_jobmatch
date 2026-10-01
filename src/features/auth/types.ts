@@ -18,6 +18,7 @@ export interface SignUpCredentials extends SignInCredentials {
   fullName: string;
   role: Role;
   consentAccepted: boolean;
+  confirmPassword: string;
 }
 
 export interface SignUpResult {

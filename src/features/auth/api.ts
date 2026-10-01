@@ -92,3 +92,21 @@ export async function getSession(): Promise<AuthUser | null> {
   }
   return data.session ? getAuthUser(data.session.user) : null;
 }
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  // Neutralize the result so the UI never reveals whether the account exists.
+  if (error) {
+    return;
+  }
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    throw error;
+  }
+}
