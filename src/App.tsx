@@ -19,6 +19,7 @@ import type { Role, Job, PipelineCandidate } from '@/lib/types';
 import { mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
 import { useAuth } from '@/features/auth/hooks';
 import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate';
+import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
 import { createApplication } from '@/features/applications/api';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
 
@@ -183,61 +184,69 @@ function App() {
   }
 
   // App screens
+  const appContent = (
+    <Layout
+      role={role}
+      screen={screen}
+      onNavigate={setScreen}
+      onLogout={handleLogout}
+      darkMode={darkMode}
+      onToggleDark={toggleDark}
+    >
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={screen}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {screen === 'swipe' && (
+            <Swipe onApply={handleApply} onDetail={handleDetail} />
+          )}
+          {screen === 'job-detail' && selectedJob && (
+            <JobDetail
+              job={selectedJob}
+              onBack={() => setScreen('swipe')}
+              onApply={handleApply}
+              alreadyApplied={appliedJobIds.has(selectedJob.id)}
+            />
+          )}
+          {screen === 'applications' && <Applications />}
+          {screen === 'profile' && <Profile />}
+          {screen === 'dashboard' && <Dashboard onNavigate={setScreen} />}
+          {screen === 'jobs' && (
+            <JobsManagement
+              jobs={recruiterJobs}
+              jobCandidates={jobCandidates}
+              onNewJob={() => setScreen('job-create')}
+              onNavigate={setScreen}
+              onToggleJobStatus={handleToggleJobStatus}
+              onDeleteJob={handleDeleteJob}
+            />
+          )}
+          {screen === 'job-create' && (
+            <JobCreate
+              onBack={() => setScreen('jobs')}
+              onPublish={handlePublishJob}
+            />
+          )}
+          {screen === 'pipeline' && <Pipeline />}
+          {screen === 'post-hire' && <PostHire onBack={() => setScreen('jobs')} />}
+          {screen === 'tokens' && <Tokens />}
+        </motion.div>
+      </AnimatePresence>
+    </Layout>
+  );
+
   return (
     <div className={darkMode ? '' : 'light'}>
       <TcleConsentGate userId={auth.user?.id ?? null}>
-      <Layout
-        role={role}
-        screen={screen}
-        onNavigate={setScreen}
-        onLogout={handleLogout}
-        darkMode={darkMode}
-        onToggleDark={toggleDark}
-      >
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={screen}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {screen === 'swipe' && (
-              <Swipe onApply={handleApply} onDetail={handleDetail} />
-            )}
-            {screen === 'job-detail' && selectedJob && (
-              <JobDetail
-                job={selectedJob}
-                onBack={() => setScreen('swipe')}
-                onApply={handleApply}
-                alreadyApplied={appliedJobIds.has(selectedJob.id)}
-              />
-            )}
-            {screen === 'applications' && <Applications />}
-            {screen === 'profile' && <Profile />}
-            {screen === 'dashboard' && <Dashboard onNavigate={setScreen} />}
-            {screen === 'jobs' && (
-              <JobsManagement
-                jobs={recruiterJobs}
-                jobCandidates={jobCandidates}
-                onNewJob={() => setScreen('job-create')}
-                onNavigate={setScreen}
-                onToggleJobStatus={handleToggleJobStatus}
-                onDeleteJob={handleDeleteJob}
-              />
-            )}
-            {screen === 'job-create' && (
-              <JobCreate
-                onBack={() => setScreen('jobs')}
-                onPublish={handlePublishJob}
-              />
-            )}
-            {screen === 'pipeline' && <Pipeline />}
-            {screen === 'post-hire' && <PostHire onBack={() => setScreen('jobs')} />}
-            {screen === 'tokens' && <Tokens />}
-          </motion.div>
-        </AnimatePresence>
-      </Layout>
+        {role === 'candidate' ? (
+          <CandidateOnboardingGate>{appContent}</CandidateOnboardingGate>
+        ) : (
+          appContent
+        )}
       </TcleConsentGate>
       <Toaster />
     </div>
