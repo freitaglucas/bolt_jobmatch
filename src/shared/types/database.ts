@@ -82,13 +82,13 @@ isOneToOne: false
                   ]
                 },"candidate_profiles": {
                   Row: {
-                    "bio": string | null,"created_at": string,"current_position": string | null,"deleted_at": string | null,"desired_positions": (string)[],"location": string | null,"phone": string | null,"seniority_general": string | null,"updated_at": string,"user_id": string,"years_of_experience": number | null
+                    "accepted_contract_types": Database["public"]['Enums']["employment_type"][],"accepted_work_models": string[],"bio": string | null,"created_at": string,"current_position": string | null,"deleted_at": string | null,"desired_positions": (string)[],"location": string | null,"phone": string | null,"seniority_general": string | null,"updated_at": string,"user_id": string,"willing_to_relocate": boolean,"years_of_experience": number | null
                   }
                   Insert: {
-                    "bio"?: string | null,"created_at"?: string,"current_position"?: string | null,"deleted_at"?: string | null,"desired_positions"?: (string)[],"location"?: string | null,"phone"?: string | null,"seniority_general"?: string | null,"updated_at"?: string,"user_id": string,"years_of_experience"?: number | null
+                    "accepted_contract_types"?: Database["public"]['Enums']["employment_type"][],"accepted_work_models"?: string[],"bio"?: string | null,"created_at"?: string,"current_position"?: string | null,"deleted_at"?: string | null,"desired_positions"?: (string)[],"location"?: string | null,"phone"?: string | null,"seniority_general"?: string | null,"updated_at"?: string,"user_id": string,"willing_to_relocate"?: boolean,"years_of_experience"?: number | null
                   }
                   Update: {
-                    "bio"?: string | null,"created_at"?: string,"current_position"?: string | null,"deleted_at"?: string | null,"desired_positions"?: (string)[],"location"?: string | null,"phone"?: string | null,"seniority_general"?: string | null,"updated_at"?: string,"user_id"?: string,"years_of_experience"?: number | null
+                    "accepted_contract_types"?: Database["public"]['Enums']["employment_type"][],"accepted_work_models"?: string[],"bio"?: string | null,"created_at"?: string,"current_position"?: string | null,"deleted_at"?: string | null,"desired_positions"?: (string)[],"location"?: string | null,"phone"?: string | null,"seniority_general"?: string | null,"updated_at"?: string,"user_id"?: string,"willing_to_relocate"?: boolean,"years_of_experience"?: number | null
                   }
                   Relationships: [
                     {
@@ -97,6 +97,25 @@ isOneToOne: false
 isOneToOne: true
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"candidate_private_preferences": {
+                  Row: {
+                    "created_at": string,"salary_expectation": number | null,"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"salary_expectation"?: number | null,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"salary_expectation"?: number | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "candidate_private_preferences_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "candidate_profiles"
+      referencedColumns: ["user_id"]
     }
                   ]
                 },"candidate_skills": {
