@@ -23,6 +23,7 @@ import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate'
 import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
 import { createApplication } from '@/features/applications/api';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
+import { getAuthLinkError } from '@/features/auth/recovery-url';
 
 type AppState = 'landing' | 'auth' | 'app';
 
@@ -57,6 +58,17 @@ function App() {
       setAppState('auth');
     }
   }, [auth.isLoading, auth.user, isResetPasswordRoute]);
+
+  useEffect(() => {
+    const message = getAuthLinkError(window.location.search, window.location.hash);
+    if (message) {
+      toast({
+        title: 'Link inválido',
+        description: message,
+      });
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [toast]);
 
   const toggleDark = () => {
     setDarkMode((prev) => {
