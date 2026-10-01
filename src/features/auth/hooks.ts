@@ -17,8 +17,8 @@ import {
   updatePassword,
 } from './api';
 import type { AuthUser, SignInCredentials, SignUpCredentials } from './types';
+import { authQueryKey, clearAuthSessionCache } from './session-cache';
 
-const authQueryKey = ['auth', 'session'] as const;
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -36,7 +36,7 @@ function AuthSessionListener() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) {
-        client.setQueryData(authQueryKey, null);
+        void clearAuthSessionCache(client);
         return;
       }
 
@@ -87,6 +87,9 @@ export function useAuth() {
   });
   const signOutMutation = useMutation({
     mutationFn: signOut,
+    onMutate: async () => {
+      await client.cancelQueries({ queryKey: authQueryKey });
+    },
     onSuccess: () => {
       client.setQueryData(authQueryKey, null);
     },
