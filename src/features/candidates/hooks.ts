@@ -1,14 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  getMyCandidateProfile,
   getMyMatchSkills,
   getSkillCatalog,
   removeMyCandidateSkill,
+  saveMyCandidateProfile,
   saveMyCandidateSkill,
 } from './api';
 import { useAuth } from '../auth/hooks';
 
 const candidateSkillsQueryKey = (userId: string | undefined) =>
   ['candidate', userId, 'match-skills'] as const;
+
+const candidateProfileQueryKey = (userId: string | undefined) =>
+  ['candidate', userId, 'profile'] as const;
 
 export function useMyMatchSkills() {
   const { user } = useAuth();
@@ -49,5 +54,31 @@ export function useRemoveCandidateSkill() {
       queryClient.invalidateQueries({
         queryKey: candidateSkillsQueryKey(user?.id),
       }),
+  });
+}
+
+export function useMyCandidateProfile() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: candidateProfileQueryKey(user?.id),
+    queryFn: getMyCandidateProfile,
+    enabled: Boolean(user?.id),
+    staleTime: 30_000,
+  });
+}
+
+export function useSaveCandidateProfile() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: saveMyCandidateProfile,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: candidateProfileQueryKey(user?.id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: candidateSkillsQueryKey(user?.id),
+      });
+    },
   });
 }
