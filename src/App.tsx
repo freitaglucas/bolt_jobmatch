@@ -18,6 +18,7 @@ import { Toaster } from '@/components/ui/toaster';
 import type { Role, Job, PipelineCandidate } from '@/lib/types';
 import { mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
 import { useAuth } from '@/features/auth/hooks';
+import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate';
 import { createApplication } from '@/features/applications/api';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
 
@@ -184,6 +185,7 @@ function App() {
   // App screens
   return (
     <div className={darkMode ? '' : 'light'}>
+      <TcleConsentGate userId={auth.user?.id ?? null}>
       <Layout
         role={role}
         screen={screen}
@@ -236,6 +238,7 @@ function App() {
           </motion.div>
         </AnimatePresence>
       </Layout>
+      </TcleConsentGate>
       <Toaster />
     </div>
   );
