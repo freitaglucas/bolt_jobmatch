@@ -109,7 +109,7 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-6">
               Encontre o <span className="text-gradient-purple-teal">match perfeito</span>
               <br />
-              entre talentos e vagas
+              entre talentos e vagas.
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
               Match Score baseado em competências reais. Swipe para candidatos,
