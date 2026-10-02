@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ZodError } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,28 +23,29 @@ import {
   Eye,
   Sparkles,
   Users,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Job, SkillRequirement } from '@/lib/types';
+import { EMPLOYMENT_TYPES } from '@/features/jobs/create-job.schema';
+import { useCreateJob } from '@/features/jobs/create-job.hooks';
+import { useRecruiterOnboarding } from '@/features/recruiters/hooks';
+import { useSkillsCatalog } from '@/features/skills/hooks';
+import { filterSkills } from '@/features/skills/search';
 
 interface JobCreateProps {
   onBack: () => void;
-  onPublish: (job: Job) => void;
+  onPublished: (title: string) => void;
 }
 
-const skillSuggestions = [
-  'Inovação Aberta',
-  'Gestão de Projetos',
-  'Negociação',
-  'Metodologias Ágeis',
-  'Liderança',
-  'Design Thinking',
-  'Análise de Dados',
-  'Apresentações',
-  'Estratégia',
-  'Relacionamento',
-];
+interface SelectedSkill {
+  skillId: string;
+  name: string;
+  category: string;
+  requiredLevel: number;
+  mandatory: boolean;
+}
+
+const MAX_SKILLS = 15;
+const MAX_SUGGESTIONS = 20;
 
 const steps = [
   { id: 0, label: 'Informações', icon: Briefcase },
@@ -51,74 +53,112 @@ const steps = [
   { id: 2, label: 'Revisão', icon: Eye },
 ];
 
-export function JobCreate({ onBack, onPublish }: JobCreateProps) {
+function categoryLabel(category: string): string {
+  return category === 'hard' ? 'Técnica' : 'Comportamental';
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof ZodError) {
+    return error.issues[0]?.message ?? 'Revise os dados da vaga.';
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Não foi possível publicar a vaga. Tente novamente.';
+}
+
+export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   const [step, setStep] = useState(0);
 
   // Step 0 fields
   const [title, setTitle] = useState('');
-  const [company, setCompany] = useState('SENAI');
   const [location, setLocation] = useState('');
   const [salary, setSalary] = useState('');
-  const [type, setType] = useState<'CLT' | 'PJ' | 'Híbrido'>('CLT');
+  const [employmentType, setEmploymentType] = useState<(typeof EMPLOYMENT_TYPES)[number]>('CLT');
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState('');
+  // TODO(pos-mvp): tags da vaga (campo escondido no MVP, ainda não existe coluna no banco).
 
   // Step 1 fields
-  const [skills, setSkills] = useState<SkillRequirement[]>([]);
+  const [selected, setSelected] = useState<SelectedSkill[]>([]);
+  const [search, setSearch] = useState('');
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) {
-      setTags([...tags, t]);
-    }
-    setTagInput('');
-  };
+  const onboarding = useRecruiterOnboarding();
+  const companyName = onboarding.data?.companyName ?? null;
 
-  const addSkill = (name: string) => {
-    if (skills.some((s) => s.name === name)) return;
-    setSkills([
-      ...skills,
-      { name, level: 3, candidateLevel: 0, mandatory: false },
+  const catalog = useSkillsCatalog();
+  const createJobMutation = useCreateJob();
+
+  const suggestions = useMemo(
+    () =>
+      filterSkills(
+        catalog.data ?? [],
+        search,
+        selected.map((skill) => skill.skillId),
+        MAX_SUGGESTIONS,
+      ),
+    [catalog.data, search, selected],
+  );
+
+  const addSkill = (skill: { id: string; name: string; category: string }) => {
+    if (selected.length >= MAX_SKILLS) return;
+    if (selected.some((item) => item.skillId === skill.id)) return;
+    setSelected((previous) => [
+      ...previous,
+      {
+        skillId: skill.id,
+        name: skill.name,
+        category: skill.category,
+        requiredLevel: 3,
+        mandatory: false,
+      },
     ]);
   };
 
-  const updateSkill = (index: number, field: keyof SkillRequirement, value: number | boolean) => {
-    setSkills((prev) =>
-      prev.map((s, i) => (i === index ? { ...s, [field]: value } : s))
+  const updateSkill = (skillId: string, changes: Partial<Pick<SelectedSkill, 'requiredLevel' | 'mandatory'>>) => {
+    setSelected((previous) =>
+      previous.map((item) => (item.skillId === skillId ? { ...item, ...changes } : item)),
     );
   };
 
-  const removeSkill = (index: number) => {
-    setSkills((prev) => prev.filter((_, i) => i !== index));
+  const removeSkill = (skillId: string) => {
+    setSelected((previous) => previous.filter((item) => item.skillId !== skillId));
   };
 
   const canProceed = () => {
-    if (step === 0) return title.trim() && company.trim() && location.trim() && description.trim();
-    if (step === 1) return skills.length > 0;
+    if (step === 0) {
+      return (
+        title.trim().length >= 3 &&
+        location.trim().length >= 2 &&
+        description.trim().length >= 20
+      );
+    }
+    if (step === 1) return selected.length >= 1 && selected.length <= MAX_SKILLS;
     return true;
   };
 
-  const handlePublish = () => {
-    const job: Job = {
-      id: `job-${Date.now()}`,
-      title: title.trim(),
-      company: company.trim(),
-      location: location.trim(),
-      salary: salary.trim() || 'A combinar',
-      type,
-      description: description.trim(),
-      matchScore: 0,
-      posted: ' agora',
-      tags,
-      status: 'Ativa',
-      candidatesCount: 0,
-      newCandidatesCount: 0,
-      interviewCount: 0,
-      skills,
-    };
-    onPublish(job);
+  const handlePublish = async () => {
+    try {
+      await createJobMutation.mutateAsync({
+        title,
+        location,
+        description,
+        salaryRange: salary,
+        employmentType,
+        skills: selected.map(({ skillId, requiredLevel, mandatory }) => ({
+          skillId,
+          requiredLevel,
+          mandatory,
+        })),
+      });
+      onPublished(title.trim());
+    } catch {
+      // O erro fica em createJobMutation.error e aparece na tela de revisão.
+    }
   };
+
+  const publishError = createJobMutation.error
+    ? getErrorMessage(createJobMutation.error)
+    : null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -192,6 +232,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                   <Input
                     id="title"
                     placeholder="Ex: Analista de Inovação Aberta"
+                    maxLength={120}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
@@ -199,19 +240,23 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="company">Empresa *</Label>
+                    <Label htmlFor="company">Empresa</Label>
                     <Input
                       id="company"
-                      placeholder="Ex: SENAI"
-                      value={company}
-                      onChange={(e) => setCompany(e.target.value)}
+                      value={companyName ?? (onboarding.isLoading ? 'Carregando...' : 'Não informada')}
+                      disabled
+                      readOnly
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Vem do cadastro da sua empresa.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="location">Localização *</Label>
                     <Input
                       id="location"
                       placeholder="Ex: São Paulo, SP ou Remoto"
+                      maxLength={120}
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                     />
@@ -224,6 +269,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                     <Input
                       id="salary"
                       placeholder="Ex: R$ 6.000 - 9.000"
+                      maxLength={60}
                       value={salary}
                       onChange={(e) => setSalary(e.target.value)}
                     />
@@ -231,13 +277,14 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                   <div className="space-y-2">
                     <Label>Tipo de contratação</Label>
                     <div className="grid grid-cols-3 gap-2">
-                      {(['CLT', 'PJ', 'Híbrido'] as const).map((t) => (
+                      {EMPLOYMENT_TYPES.map((t) => (
                         <button
                           key={t}
-                          onClick={() => setType(t)}
+                          type="button"
+                          onClick={() => setEmploymentType(t)}
                           className={cn(
                             'py-2 rounded-lg text-sm font-medium border transition-all',
-                            type === t
+                            employmentType === t
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-border text-muted-foreground hover:border-primary/30'
                           )}
@@ -255,44 +302,13 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                     id="description"
                     placeholder="Descreva as responsabilidades, objetivos e contexto da posição..."
                     rows={5}
+                    maxLength={5000}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tags (opcional)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Ex: Inovação, Startups..."
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addTag();
-                        }
-                      }}
-                    />
-                    <Button variant="outline" onClick={addTag} type="button">
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="gap-1">
-                          {tag}
-                          <button
-                            onClick={() => setTags(tags.filter((t) => t !== tag))}
-                            className="ml-1 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo de 20 caracteres ({description.trim().length}/5000).
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -310,44 +326,98 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Adicione as skills necessárias e defina o nível exigido (1-5) e se são obrigatórias.
-                    Estas competências alimentam o Match Score dos candidatos.
+                    Escolha as competências do catálogo, defina o nível exigido (1-5) e se são obrigatórias.
+                    Elas alimentam o Match Score dos candidatos. Máximo de {MAX_SKILLS}.
                   </p>
 
-                  {/* Suggestions */}
-                  <div>
-                    <Label className="mb-2 block">Sugestões</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {skillSuggestions
-                        .filter((s) => !skills.some((sk) => sk.name === s))
-                        .map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => addSkill(s)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:border-primary/30 hover:text-primary transition-all"
-                          >
-                            <Plus className="h-3 w-3" />
-                            {s}
-                          </button>
-                        ))}
-                    </div>
+                  {/* Catalog search */}
+                  <div className="space-y-2">
+                    <Label htmlFor="skill-search">Buscar no catálogo</Label>
+                    <Input
+                      id="skill-search"
+                      placeholder="Ex: Comunicação, SQL, Liderança..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+
+                    {catalog.isLoading && (
+                      <p className="text-sm text-muted-foreground">Carregando competências...</p>
+                    )}
+
+                    {catalog.isError && (
+                      <div className="flex items-center gap-3">
+                        <p className="text-sm text-destructive">
+                          Não foi possível carregar o catálogo de competências.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          type="button"
+                          onClick={() => {
+                            void catalog.refetch();
+                          }}
+                        >
+                          Tentar de novo
+                        </Button>
+                      </div>
+                    )}
+
+                    {catalog.data && (
+                      <>
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {suggestions.items.map((skill) => (
+                            <button
+                              key={skill.id}
+                              type="button"
+                              disabled={selected.length >= MAX_SKILLS}
+                              onClick={() => addSkill(skill)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:border-primary/30 hover:text-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Plus className="h-3 w-3" />
+                              {skill.name}
+                              <span className="text-[10px] opacity-70">
+                                · {categoryLabel(skill.category)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        {suggestions.total === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Nenhuma competência encontrada para essa busca.
+                          </p>
+                        )}
+                        {suggestions.total > suggestions.items.length && (
+                          <p className="text-xs text-muted-foreground">
+                            Mostrando {suggestions.items.length} de {suggestions.total}. Digite para refinar.
+                          </p>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   {/* Added skills */}
-                  {skills.length > 0 && (
+                  {selected.length > 0 && (
                     <div className="space-y-3 pt-2">
                       <Separator />
-                      {skills.map((skill, i) => (
+                      <p className="text-xs text-muted-foreground">
+                        {selected.length}/{MAX_SKILLS} competências escolhidas
+                      </p>
+                      {selected.map((skill) => (
                         <div
-                          key={skill.name}
+                          key={skill.skillId}
                           className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-border"
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{skill.name}</span>
+                              <Badge variant="secondary" className="text-[10px]">
+                                {categoryLabel(skill.category)}
+                              </Badge>
                               <button
-                                onClick={() => removeSkill(i)}
+                                type="button"
+                                onClick={() => removeSkill(skill.skillId)}
                                 className="text-muted-foreground hover:text-destructive transition-colors"
+                                aria-label={`Remover ${skill.name}`}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
@@ -361,10 +431,11 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                               {[1, 2, 3, 4, 5].map((lvl) => (
                                 <button
                                   key={lvl}
-                                  onClick={() => updateSkill(i, 'level', lvl)}
+                                  type="button"
+                                  onClick={() => updateSkill(skill.skillId, { requiredLevel: lvl })}
                                   className={cn(
                                     'w-7 h-7 rounded-lg text-xs font-bold transition-all',
-                                    skill.level >= lvl
+                                    skill.requiredLevel >= lvl
                                       ? 'bg-gradient-purple-teal text-white'
                                       : 'bg-muted text-muted-foreground hover:bg-muted/70'
                                   )}
@@ -379,7 +450,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                           <div className="flex items-center gap-2">
                             <Switch
                               checked={skill.mandatory}
-                              onCheckedChange={(v) => updateSkill(i, 'mandatory', v)}
+                              onCheckedChange={(v) => updateSkill(skill.skillId, { mandatory: v })}
                             />
                             <span className="text-xs text-muted-foreground">
                               {skill.mandatory ? 'Obrigatória' : 'Desejável'}
@@ -389,20 +460,17 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                       ))}
                     </div>
                   )}
-
-                  {/* Custom skill input */}
-                  <CustomSkillInput onAdd={addSkill} existing={skills.map((s) => s.name)} />
                 </CardContent>
               </Card>
 
               {/* Match preview */}
-              {skills.length > 0 && (
+              {selected.length > 0 && (
                 <Card className="border-border bg-gradient-purple-teal-soft">
                   <CardContent className="p-4 flex items-center gap-3">
                     <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <p className="text-sm text-muted-foreground">
-                      {skills.filter((s) => s.mandatory).length} obrigatória(s) e{' '}
-                      {skills.filter((s) => !s.mandatory).length} desejável(eis). O Match Score será calculado
+                      {selected.filter((s) => s.mandatory).length} obrigatória(s) e{' '}
+                      {selected.filter((s) => !s.mandatory).length} desejável(eis). O Match Score será calculado
                       com base nestas competências para cada candidato.
                     </p>
                   </CardContent>
@@ -422,7 +490,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                       <h2 className="text-xl font-bold truncate">{title || 'Título da vaga'}</h2>
                       <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                         <Building2 className="h-4 w-4" />
-                        {company || 'Empresa'}
+                        {companyName ?? 'Empresa'}
                       </div>
                     </div>
                     <div className="w-16 h-16 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
@@ -438,27 +506,20 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                     )}
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       <Briefcase className="h-3.5 w-3.5" />
-                      {type}
+                      {employmentType}
                     </span>
-                    {salary && (
+                    {salary.trim() && (
                       <span className="flex items-center gap-1.5 text-muted-foreground">
                         <Coins className="h-3.5 w-3.5" />
                         {salary}
                       </span>
                     )}
                   </div>
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {tags.map((tag) => (
-                        <Badge key={tag} variant="secondary">{tag}</Badge>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <CardContent className="p-6 space-y-4">
                   <div>
                     <h3 className="text-sm font-semibold mb-2">Descrição</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                       {description || 'Sem descrição.'}
                     </p>
                   </div>
@@ -466,10 +527,10 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                   <Separator />
 
                   <div>
-                    <h3 className="text-sm font-semibold mb-3">Competências exigidas ({skills.length})</h3>
+                    <h3 className="text-sm font-semibold mb-3">Competências exigidas ({selected.length})</h3>
                     <div className="space-y-2">
-                      {skills.map((skill, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                      {selected.map((skill) => (
+                        <div key={skill.skillId} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
                           <Target className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1">{skill.name}</span>
                           <div className="flex gap-1">
@@ -478,7 +539,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                                 key={j}
                                 className={cn(
                                   'h-1.5 w-4 rounded-full',
-                                  j < skill.level ? 'bg-jm-purple' : 'bg-muted'
+                                  j < skill.requiredLevel ? 'bg-jm-purple' : 'bg-muted'
                                 )}
                               />
                             ))}
@@ -505,6 +566,12 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
                   </p>
                 </CardContent>
               </Card>
+
+              {publishError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {publishError}
+                </p>
+              )}
             </div>
           )}
         </motion.div>
@@ -514,6 +581,8 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
       <div className="flex items-center justify-between mt-8">
         <Button
           variant="outline"
+          type="button"
+          disabled={createJobMutation.isPending}
           onClick={step === 0 ? onBack : () => setStep(step - 1)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -522,6 +591,7 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
 
         {step < 2 ? (
           <Button
+            type="button"
             onClick={() => setStep(step + 1)}
             disabled={!canProceed()}
             className="bg-gradient-purple-teal text-white border-0 hover:opacity-90"
@@ -531,54 +601,17 @@ export function JobCreate({ onBack, onPublish }: JobCreateProps) {
           </Button>
         ) : (
           <Button
-            onClick={handlePublish}
+            type="button"
+            onClick={() => {
+              void handlePublish();
+            }}
+            disabled={createJobMutation.isPending}
             className="bg-gradient-purple-teal text-white border-0 hover:opacity-90"
           >
             <Check className="h-4 w-4 mr-2" />
-            Publicar vaga
+            {createJobMutation.isPending ? 'Publicando...' : 'Publicar vaga'}
           </Button>
         )}
-      </div>
-    </div>
-  );
-}
-
-function CustomSkillInput({
-  onAdd,
-  existing,
-}: {
-  onAdd: (name: string) => void;
-  existing: string[];
-}) {
-  const [value, setValue] = useState('');
-
-  const handleAdd = () => {
-    const name = value.trim();
-    if (name && !existing.includes(name)) {
-      onAdd(name);
-      setValue('');
-    }
-  };
-
-  return (
-    <div className="pt-2 border-t border-border">
-      <Label className="mb-2 block">Adicionar competência personalizada</Label>
-      <div className="flex gap-2">
-        <Input
-          placeholder="Digite o nome da skill..."
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-        />
-        <Button variant="outline" onClick={handleAdd} type="button">
-          <Plus className="h-4 w-4 mr-1" />
-          Adicionar
-        </Button>
       </div>
     </div>
   );
