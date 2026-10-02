@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Screen } from '@/components/Layout';
 import { useRecruiterOnboarding } from '@/features/recruiters/hooks';
+import { groupCandidatesByJob } from '@/features/applications/recruiter-applications';
+import { useRecruiterApplications } from '@/features/applications/recruiter-applications.hooks';
 import {
   useDeleteJob,
   useRecruiterJobs,
@@ -16,13 +18,11 @@ interface RecruiterJobsProps {
   onNavigate: (screen: Screen) => void;
 }
 
-// A lista real de candidatos por vaga chega no item 2.5 do backlog.
-const NO_CANDIDATES: Record<string, never[]> = {};
-
 export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   const { toast } = useToast();
   const onboarding = useRecruiterOnboarding();
   const jobsQuery = useRecruiterJobs();
+  const applicationsQuery = useRecruiterApplications();
   const setStatus = useSetJobStatus();
   const removeJob = useDeleteJob();
 
@@ -31,6 +31,11 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   const jobs = useMemo(
     () => (jobsQuery.data ?? []).map((row) => mapRecruiterJob(row, companyName)),
     [jobsQuery.data, companyName],
+  );
+
+  const candidatesByJob = useMemo(
+    () => groupCandidatesByJob(applicationsQuery.data ?? []),
+    [applicationsQuery.data],
   );
 
   const handleToggleStatus = (jobId: string) => {
@@ -71,7 +76,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
     });
   };
 
-  if (jobsQuery.isLoading) {
+  if (jobsQuery.isLoading || applicationsQuery.isLoading) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-10 text-sm text-muted-foreground">
         Carregando vagas...
@@ -79,7 +84,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
     );
   }
 
-  if (jobsQuery.isError) {
+  if (jobsQuery.isError || applicationsQuery.isError) {
     return (
       <div className="max-w-5xl mx-auto px-4 py-10 space-y-3">
         <p className="text-sm text-destructive">Não foi possível carregar suas vagas.</p>
@@ -88,6 +93,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
           size="sm"
           onClick={() => {
             void jobsQuery.refetch();
+            void applicationsQuery.refetch();
           }}
         >
           Tentar de novo
@@ -99,7 +105,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   return (
     <JobsManagement
       jobs={jobs}
-      jobCandidates={NO_CANDIDATES}
+      jobCandidates={candidatesByJob}
       onNewJob={onNewJob}
       onNavigate={onNavigate}
       onToggleJobStatus={handleToggleStatus}
