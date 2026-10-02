@@ -142,12 +142,10 @@ function App() {
     setScreen('job-detail');
   };
 
-  const handlePublishJob = (job: Job) => {
-    setRecruiterJobs((prev) => [job, ...prev]);
-    setJobCandidates((prev) => ({ ...prev, [job.id]: [] }));
+  const handleJobPublished = (title: string) => {
     toast({
       title: 'Vaga publicada!',
-      description: `${job.title} está agora visível para candidatos no swipe.`,
+      description: `${title} está agora visível para candidatos no swipe.`,
     });
     setScreen('jobs');
   };
@@ -260,7 +258,7 @@ function App() {
           {screen === 'job-create' && (
             <JobCreate
               onBack={() => setScreen('jobs')}
-              onPublish={handlePublishJob}
+              onPublished={handleJobPublished}
             />
           )}
           {screen === 'pipeline' && <Pipeline />}
