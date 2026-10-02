@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,17 @@ import {
 } from 'lucide-react';
 import type { Job } from '@/lib/types';
 import { useActiveJobs, useSwipeDeck, type SwipeDeckCard } from '@/features/jobs/hooks';
+import {
+  applyJobFilters,
+  DEFAULT_JOB_FILTERS,
+  hasActiveFilters,
+  listJobSkillNames,
+  type JobFilters,
+} from '@/features/jobs/filters';
+import { JobFiltersBar } from '@/features/jobs/components/JobFiltersBar';
 import { useMyMatchSkills } from '@/features/candidates/hooks';
-import type { MatchFactor } from '@/features/match/types';
+import { calculateSwipeMatch } from '@/features/match/adapters/swipeMatchAdapter';
+import type { CandidateSkill, MatchFactor } from '@/features/match/types';
 import { cn } from '@/lib/utils';
 import {
   Popover,
@@ -29,6 +38,7 @@ import {
 } from '@/components/ui/popover';
 
 const EMPTY_JOBS: Job[] = [];
+const EMPTY_SKILLS: CandidateSkill[] = [];
 
 interface SwipeProps {
   onApply: (job: Job) => Promise<boolean>;
@@ -251,13 +261,25 @@ function JobCard({
 }
 
 export function Swipe({ onApply, onDetail }: SwipeProps) {
+  const [filters, setFilters] = useState<JobFilters>(DEFAULT_JOB_FILTERS);
   const jobsQuery = useActiveJobs();
   const skillsQuery = useMyMatchSkills();
   const jobs = jobsQuery.data ?? EMPTY_JOBS;
-  const candidateSkills = skillsQuery.data ?? [];
-  const deck = useSwipeDeck(jobs, candidateSkills, onApply);
+  const candidateSkills = skillsQuery.data ?? EMPTY_SKILLS;
+  const availableSkills = useMemo(() => listJobSkillNames(jobs), [jobs]);
+  const filteredJobs = useMemo(
+    () =>
+      applyJobFilters(
+        jobs,
+        filters,
+        (job) => calculateSwipeMatch(job, candidateSkills).score,
+      ),
+    [jobs, filters, candidateSkills],
+  );
+  const deck = useSwipeDeck(filteredJobs, candidateSkills, onApply);
   const currentJob = deck.currentJob;
   const queryError = jobsQuery.error ?? skillsQuery.error;
+  const noFilterResults = jobs.length > 0 && filteredJobs.length === 0;
 
   if (jobsQuery.isLoading || skillsQuery.isLoading) {
     return (
@@ -329,6 +351,15 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
         </p>
       </div>
 
+      {jobs.length > 0 && (
+        <JobFiltersBar
+          availableSkills={availableSkills}
+          value={filters}
+          onChange={setFilters}
+          resultCount={filteredJobs.length}
+        />
+      )}
+
       {/* Card stack */}
       <div className="relative h-[560px] mb-6">
         <AnimatePresence>
@@ -341,24 +372,46 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">
-                {jobs.length > 0
-                  ? 'Você viu todas as vagas!'
-                  : 'Nenhuma vaga ativa no momento'}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {jobs.length > 0 && deck.appliedCount > 0
-                  ? `Você se candidatou a ${deck.appliedCount} vaga${deck.appliedCount > 1 ? 's' : ''}.`
-                  : 'Volte mais tarde para novas oportunidades.'}
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  deck.reset();
-                }}
-              >
-                Ver vagas novamente
-              </Button>
+              {noFilterResults ? (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">
+                    Nenhuma vaga com esses filtros
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Tente outras competências ou limpe os filtros.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFilters(DEFAULT_JOB_FILTERS);
+                    }}
+                    disabled={!hasActiveFilters(filters)}
+                  >
+                    Limpar filtros
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">
+                    {jobs.length > 0
+                      ? 'Você viu todas as vagas!'
+                      : 'Nenhuma vaga ativa no momento'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {jobs.length > 0 && deck.appliedCount > 0
+                      ? `Você se candidatou a ${deck.appliedCount} vaga${deck.appliedCount > 1 ? 's' : ''}.`
+                      : 'Volte mais tarde para novas oportunidades.'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      deck.reset();
+                    }}
+                  >
+                    Ver vagas novamente
+                  </Button>
+                </>
+              )}
             </motion.div>
           ) : (
             deck.cards.map((card, index) => (
