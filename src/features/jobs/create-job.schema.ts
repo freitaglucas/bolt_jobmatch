@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { IMPORTANCE_VALUES } from './importance';
 import { SENIORITY_VALUES } from './seniority';
 
 export const EMPLOYMENT_TYPES = ['CLT', 'PJ', 'Híbrido'] as const;
@@ -11,6 +12,11 @@ export const JobSkillInputSchema = z.object({
     .min(1, 'O nível mínimo é 1.')
     .max(5, 'O nível máximo é 5.'),
   mandatory: z.boolean(),
+  importance: z
+    .enum(IMPORTANCE_VALUES, {
+      errorMap: () => ({ message: 'Escolha uma importância válida.' }),
+    })
+    .optional(),
 });
 
 export const CreateJobSchema = z.object({

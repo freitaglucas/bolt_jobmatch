@@ -5,9 +5,11 @@ import {
   type CreateJobInput,
   type JobSkillInput,
 } from './create-job.schema';
+import { DEFAULT_IMPORTANCE, weightForImportance } from './importance';
 
-// Peso padrão de cada competência. O ajuste fino de pesos vem no item 2.3 (match-v2).
-export const JOB_SKILL_DEFAULT_WEIGHT = 1;
+// Peso padrão de uma competência (importância Alta). O recrutador pode baixar
+// para Média (0,75) ou Baixa (0,5) na criação da vaga (item 2.3a).
+export const JOB_SKILL_DEFAULT_WEIGHT = weightForImportance(DEFAULT_IMPORTANCE);
 
 export interface JobSkillRow {
   job_id: string;
@@ -25,7 +27,7 @@ export function buildJobSkillRows(
     job_id: jobId,
     skill_id: skill.skillId,
     required_level: skill.requiredLevel,
-    weight: JOB_SKILL_DEFAULT_WEIGHT,
+    weight: weightForImportance(skill.importance),
     mandatory: skill.mandatory,
   }));
 }
