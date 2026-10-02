@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApplicationStatus } from '../../lib/types';
-import { supabase } from '../../shared/lib/supabase';
-import { listRecruiterApplications } from './recruiter-applications.api';
-import { stageToDbStatus } from './recruiter-applications';
+import { CANDIDATE_APPLICATIONS_QUERY_KEY } from './hooks';
+import {
+  listRecruiterApplications,
+  moveApplicationStage,
+  sendApplicationFeedback,
+  type SendFeedbackInput,
+} from './recruiter-applications.api';
 
 export const RECRUITER_APPLICATIONS_QUERY_KEY = ['applications', 'recruiter'] as const;
 
@@ -14,29 +18,38 @@ export function useRecruiterApplications() {
   });
 }
 
-// Move a candidatura para outra etapa. A coluna liberada para update e
-// current_stage (a mesma que o mapper le); o RLS limita as vagas do recrutador.
+// Move a candidatura para outra etapa. A chamada ao banco fica no api da
+// feature; o RLS limita as vagas do recrutador.
 export function useMoveApplicationStage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       applicationId,
       stage,
     }: {
       applicationId: string;
       stage: ApplicationStatus;
-    }) => {
-      const { error } = await supabase
-        .from('applications')
-        .update({ current_stage: stageToDbStatus(stage) })
-        .eq('id', applicationId);
-      if (error) {
-        throw error;
-      }
-    },
+    }) => moveApplicationStage(applicationId, stage),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: RECRUITER_APPLICATIONS_QUERY_KEY,
+      });
+    },
+  });
+}
+
+// Envia o feedback ao candidato. Invalida as listas do recrutador e do
+// candidato (o feedback aparece em "Minhas candidaturas").
+export function useSendApplicationFeedback() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SendFeedbackInput) => sendApplicationFeedback(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: RECRUITER_APPLICATIONS_QUERY_KEY,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: CANDIDATE_APPLICATIONS_QUERY_KEY,
       });
     },
   });

@@ -361,7 +361,10 @@ export const mockApplications: Application[] = [
     status: 'Entrevista',
     appliedDate: '2026-09-20',
     matchScore: 92,
-    feedback: 'Candidata com excelente fit técnico. Agendar entrevista com gestora.',
+    feedback: {
+      content: 'Candidata com excelente fit técnico. Agendar entrevista com gestora.',
+      sentAt: '26/09/2026',
+    },
     timeline: [
       { label: 'Candidatura enviada', date: '20 Set', done: true, status: 'Em análise' },
       { label: 'Triagem de currículo', date: '22 Set', done: true, status: 'Triagem' },

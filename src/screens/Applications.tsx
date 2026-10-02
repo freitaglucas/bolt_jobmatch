@@ -73,7 +73,10 @@ function Timeline({ application }: { application: Application }) {
       {application.feedback && (
         <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-xs font-semibold text-primary mb-1">Feedback do recrutador</p>
-          <p className="text-sm text-muted-foreground">{application.feedback}</p>
+          <p className="text-sm text-muted-foreground">{application.feedback.content}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Enviado em {application.feedback.sentAt}
+          </p>
         </div>
       )}
     </div>
@@ -91,6 +94,7 @@ export function Applications() {
       </div>
 
       <div className="space-y-4">
+        {/* TODO(mock): trocar por useCandidateApplications() quando a tela for ligada ao banco. */}
         {mockApplications.map((app, i) => {
           const cfg = statusConfig(app.status);
           const StatusIcon = cfg.icon;

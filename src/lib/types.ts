@@ -90,6 +90,12 @@ export type ApplicationStatus =
   | 'Aprovado'
   | 'Rejeitado';
 
+// Feedback do recrutador ja enviado ao candidato: texto + data do envio.
+export interface ApplicationFeedback {
+  content: string;
+  sentAt: string;
+}
+
 export interface TimelineStep {
   label: string;
   date: string;
@@ -106,7 +112,7 @@ export interface Application {
   appliedDate: string;
   matchScore: number;
   timeline: TimelineStep[];
-  feedback?: string;
+  feedback?: ApplicationFeedback;
 }
 
 export interface CandidateSkill {
