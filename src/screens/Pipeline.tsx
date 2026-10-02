@@ -15,7 +15,14 @@ import { MatchScoreRing } from '@/components/MatchScoreRing';
 import type { PipelineCandidate } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { mapRecruiterApplication } from '@/features/applications/recruiter-applications';
-import { useRecruiterApplications } from '@/features/applications/recruiter-applications.hooks';
+import {
+  useMoveApplicationStage,
+  useRecruiterApplications,
+} from '@/features/applications/recruiter-applications.hooks';
+import {
+  canReject,
+  getNextStage,
+} from '@/features/applications/pipeline-transitions';
 import {
   clearPipelineFocus,
   peekPipelineFocus,
@@ -263,7 +270,18 @@ function CandidateModal({
   candidate: PipelineCandidate | null;
   onClose: () => void;
 }) {
+  const moveStage = useMoveApplicationStage();
+  const [confirmingReject, setConfirmingReject] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConfirmingReject(false);
+    setErrorMessage(null);
+  }, [candidate]);
+
   if (!candidate) return null;
+
+  const nextStage = getNextStage(candidate.stage);
 
   return (
     <Dialog open={!!candidate} onOpenChange={onClose}>
@@ -318,9 +336,74 @@ function CandidateModal({
             </div>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Mover o candidato de etapa chega na próxima atualização.
-          </p>
+          {errorMessage && (
+            <p className="text-sm text-destructive">{errorMessage}</p>
+          )}
+
+          {nextStage && (
+            <Button
+              className="w-full"
+              disabled={moveStage.isPending}
+              onClick={() =>
+                moveStage.mutate(
+                  { applicationId: candidate.id, stage: nextStage },
+                  {
+                    onSuccess: () => onClose(),
+                    onError: () =>
+                      setErrorMessage(
+                        'Não foi possível mover a candidatura. Tente de novo.',
+                      ),
+                  },
+                )
+              }
+            >
+              Avançar para {nextStage}
+            </Button>
+          )}
+
+          {canReject(candidate.stage) &&
+            (confirmingReject ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Rejeitar esta candidatura?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    disabled={moveStage.isPending}
+                    onClick={() =>
+                      moveStage.mutate(
+                        { applicationId: candidate.id, stage: 'Rejeitado' },
+                        {
+                          onSuccess: () => onClose(),
+                          onError: () =>
+                            setErrorMessage(
+                              'Não foi possível mover a candidatura. Tente de novo.',
+                            ),
+                        },
+                      )
+                    }
+                  >
+                    Confirmar rejeição
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setConfirmingReject(false)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setConfirmingReject(true)}
+              >
+                Rejeitar
+              </Button>
+            ))}
         </div>
       </DialogContent>
     </Dialog>
