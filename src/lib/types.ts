@@ -139,14 +139,19 @@ export interface CandidateProfile {
 }
 
 export interface PipelineCandidate {
-  id: string;
+  id: string; // candidatura (applications.id) quando vem do banco
   name: string;
   role: string;
-  seniority: Seniority;
+  seniority: string; // texto livre do perfil do candidato
   matchScore: number;
   appliedDate: string;
   stage: ApplicationStatus;
   avatarColor: string;
+  jobId?: string;
+  jobTitle?: string;
+  location?: string | null;
+  yearsOfExperience?: number | null;
+  silverMedalist?: boolean;
 }
 
 export interface TokenEvent {
