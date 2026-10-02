@@ -26,6 +26,7 @@ import {
   DollarSign,
   UserCheck,
 } from 'lucide-react';
+import { focusPipelineOnJob } from '../features/applications/pipeline-focus';
 import { cn } from '@/lib/utils';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import type { Job, PipelineCandidate } from '@/lib/types';
@@ -391,6 +392,7 @@ function JobCandidatesModal({
                 className="w-full mt-2"
                 onClick={() => {
                   onClose();
+                  focusPipelineOnJob(job.id);
                   onNavigate('pipeline');
                 }}
               >
