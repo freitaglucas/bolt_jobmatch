@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { normalizeText } from '../../skills/search';
+import { SENIORITY_LABELS, type SeniorityValue } from '../seniority';
 import type { JobFilters, JobSortOrder } from '../filters';
 
 const MAX_VISIBLE_SKILLS = 40;
@@ -18,6 +19,7 @@ const SORT_OPTIONS: { value: JobSortOrder; label: string }[] = [
 
 interface JobFiltersBarProps {
   availableSkills: string[];
+  availableSeniorities: SeniorityValue[];
   value: JobFilters;
   onChange: (next: JobFilters) => void;
   resultCount: number;
@@ -25,6 +27,7 @@ interface JobFiltersBarProps {
 
 export function JobFiltersBar({
   availableSkills,
+  availableSeniorities,
   value,
   onChange,
   resultCount,
@@ -38,6 +41,8 @@ export function JobFiltersBar({
       normalizedQuery === '' || normalizeText(name).includes(normalizedQuery),
   );
   const shownSkills = matchingSkills.slice(0, MAX_VISIBLE_SKILLS);
+  const hasSelectedChips =
+    value.skillNames.length > 0 || value.seniorities.length > 0;
 
   const toggleSkill = (name: string) => {
     const key = normalizeText(name);
@@ -50,13 +55,23 @@ export function JobFiltersBar({
     });
   };
 
+  const toggleSeniority = (level: SeniorityValue) => {
+    const alreadySelected = value.seniorities.includes(level);
+    onChange({
+      ...value,
+      seniorities: alreadySelected
+        ? value.seniorities.filter((item) => item !== level)
+        : [...value.seniorities, level],
+    });
+  };
+
   const setSort = (sort: JobSortOrder) => {
     onChange({ ...value, sort });
   };
 
   return (
     <div className="mb-4 space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div
           role="group"
           aria-label="Ordenar vagas"
@@ -80,43 +95,31 @@ export function JobFiltersBar({
           ))}
         </div>
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="ml-auto">
-              Competências
-              {value.skillNames.length > 0
-                ? ` (${value.skillNames.length})`
-                : ''}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-72" align="end">
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar competência"
-                aria-label="Buscar competência"
-                className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-              {availableSkills.length === 0 ? (
+        <div className="ml-auto flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                Senioridade
+                {value.seniorities.length > 0
+                  ? ` (${value.seniorities.length})`
+                  : ''}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              {availableSeniorities.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Nenhuma competência nas vagas ativas.
-                </p>
-              ) : shownSkills.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Nenhuma competência encontrada.
+                  Nenhuma vaga ativa informa a senioridade.
                 </p>
               ) : (
-                <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
-                  {shownSkills.map((name) => {
-                    const selected = selectedKeys.has(normalizeText(name));
+                <div className="flex flex-wrap gap-1.5">
+                  {availableSeniorities.map((level) => {
+                    const selected = value.seniorities.includes(level);
                     return (
                       <button
-                        key={name}
+                        key={level}
                         type="button"
                         aria-pressed={selected}
-                        onClick={() => toggleSkill(name)}
+                        onClick={() => toggleSeniority(level)}
                         className={cn(
                           'rounded-full border px-2.5 py-1 text-xs transition-colors',
                           selected
@@ -124,25 +127,89 @@ export function JobFiltersBar({
                             : 'border-border text-muted-foreground hover:text-foreground',
                         )}
                       >
-                        {name}
+                        {SENIORITY_LABELS[level]}
                       </button>
                     );
                   })}
                 </div>
               )}
-              {matchingSkills.length > MAX_VISIBLE_SKILLS && (
-                <p className="text-xs text-muted-foreground">
-                  Mostrando {MAX_VISIBLE_SKILLS} de {matchingSkills.length}.
-                  Digite para refinar a busca.
-                </p>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                Competências
+                {value.skillNames.length > 0
+                  ? ` (${value.skillNames.length})`
+                  : ''}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72" align="end">
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar competência"
+                  aria-label="Buscar competência"
+                  className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+                {availableSkills.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhuma competência nas vagas ativas.
+                  </p>
+                ) : shownSkills.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Nenhuma competência encontrada.
+                  </p>
+                ) : (
+                  <div className="flex max-h-48 flex-wrap gap-1.5 overflow-y-auto">
+                    {shownSkills.map((name) => {
+                      const selected = selectedKeys.has(normalizeText(name));
+                      return (
+                        <button
+                          key={name}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => toggleSkill(name)}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-xs transition-colors',
+                            selected
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {matchingSkills.length > MAX_VISIBLE_SKILLS && (
+                  <p className="text-xs text-muted-foreground">
+                    Mostrando {MAX_VISIBLE_SKILLS} de {matchingSkills.length}.
+                    Digite para refinar a busca.
+                  </p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
-      {value.skillNames.length > 0 && (
+      {hasSelectedChips && (
         <div className="flex flex-wrap items-center gap-1.5">
+          {value.seniorities.map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => toggleSeniority(level)}
+              aria-label={`Remover filtro ${SENIORITY_LABELS[level]}`}
+              className="rounded-full border border-primary bg-primary/10 px-2.5 py-1 text-xs text-primary"
+            >
+              {SENIORITY_LABELS[level]} ×
+            </button>
+          ))}
           {value.skillNames.map((name) => (
             <button
               key={name}
@@ -156,10 +223,10 @@ export function JobFiltersBar({
           ))}
           <button
             type="button"
-            onClick={() => onChange({ ...value, skillNames: [] })}
+            onClick={() => onChange({ ...value, skillNames: [], seniorities: [] })}
             className="px-1 text-xs text-muted-foreground underline hover:text-foreground"
           >
-            Limpar competências
+            Limpar filtros
           </button>
         </div>
       )}
@@ -170,3 +237,4 @@ export function JobFiltersBar({
     </div>
   );
 }
+

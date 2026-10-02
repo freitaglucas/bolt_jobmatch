@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   ArrowRight,
+  Award,
   Check,
   Plus,
   Trash2,
@@ -27,6 +28,11 @@ import {
 import { cn } from '@/lib/utils';
 import { EMPLOYMENT_TYPES } from '@/features/jobs/create-job.schema';
 import { useCreateJob } from '@/features/jobs/create-job.hooks';
+import {
+  SENIORITY_LABELS,
+  SENIORITY_VALUES,
+  type SeniorityValue,
+} from '@/features/jobs/seniority';
 import { useRecruiterOnboarding } from '@/features/recruiters/hooks';
 import { useSkillsCatalog } from '@/features/skills/hooks';
 import { filterSkills } from '@/features/skills/search';
@@ -75,6 +81,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   const [location, setLocation] = useState('');
   const [salary, setSalary] = useState('');
   const [employmentType, setEmploymentType] = useState<(typeof EMPLOYMENT_TYPES)[number]>('CLT');
+  const [seniority, setSeniority] = useState<SeniorityValue | null>(null);
   const [description, setDescription] = useState('');
   // TODO(pos-mvp): tags da vaga (campo escondido no MVP, ainda não existe coluna no banco).
 
@@ -144,6 +151,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         description,
         salaryRange: salary,
         employmentType,
+        seniority: seniority ?? undefined,
         skills: selected.map(({ skillId, requiredLevel, mandatory }) => ({
           skillId,
           requiredLevel,
@@ -294,6 +302,31 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                       ))}
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Senioridade (opcional)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {SENIORITY_VALUES.map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        aria-pressed={seniority === level}
+                        onClick={() => setSeniority(seniority === level ? null : level)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all',
+                          seniority === level
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border text-muted-foreground hover:border-primary/30'
+                        )}
+                      >
+                        {SENIORITY_LABELS[level]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Clique de novo para desmarcar. Ajuda o candidato a filtrar as vagas.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -514,6 +547,12 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                         {salary}
                       </span>
                     )}
+                    {seniority && (
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Award className="h-3.5 w-3.5" />
+                        {SENIORITY_LABELS[seniority]}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <CardContent className="p-6 space-y-4">
@@ -616,3 +655,9 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
     </div>
   );
 }
+
+
+
+
+
+
