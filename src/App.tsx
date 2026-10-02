@@ -9,22 +9,19 @@ import { JobDetail } from '@/screens/JobDetail';
 import { Applications } from '@/screens/Applications';
 import { Profile } from '@/screens/Profile';
 import { Dashboard } from '@/screens/Dashboard';
-import { JobsManagement } from '@/screens/JobsManagement';
+import { RecruiterJobs } from '@/screens/RecruiterJobs';
 import { JobCreate } from '@/screens/JobCreate';
 import { Pipeline } from '@/screens/Pipeline';
 import { PostHire } from '@/screens/PostHire';
 import { Tokens } from '@/screens/Tokens';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
-import type { Role, Job, PipelineCandidate } from '@/lib/types';
-import { mockRecruiterJobs, mockJobCandidates } from '@/lib/mock-data';
+import type { Role, Job } from '@/lib/types';
 import { useAuth } from '@/features/auth/hooks';
 import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate';
 import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
-import { RecruiterOnboardingGate } from '@/features/recruiters/components/RecruiterOnboardingGate';
 import { createApplication } from '@/features/applications/api';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
-import { getAuthLinkError } from '@/features/auth/recovery-url';
 
 type AppState = 'landing' | 'auth' | 'app';
 
@@ -35,10 +32,6 @@ function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
-
-  // Recruiter state
-  const [recruiterJobs, setRecruiterJobs] = useState<Job[]>(mockRecruiterJobs);
-  const [jobCandidates, setJobCandidates] = useState<Record<string, PipelineCandidate[]>>(mockJobCandidates);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -59,17 +52,6 @@ function App() {
       setAppState('auth');
     }
   }, [auth.isLoading, auth.user, isResetPasswordRoute]);
-
-  useEffect(() => {
-    const message = getAuthLinkError(window.location.search, window.location.hash);
-    if (message) {
-      toast({
-        title: 'Link inválido',
-        description: message,
-      });
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-  }, [toast]);
 
   const toggleDark = () => {
     setDarkMode((prev) => {
@@ -95,8 +77,6 @@ function App() {
       setAppState('landing');
       setSelectedJob(null);
       setAppliedJobIds(new Set());
-      setRecruiterJobs(mockRecruiterJobs);
-      setJobCandidates(mockJobCandidates);
     } catch {
       toast({
         title: 'Não foi possível sair',
@@ -148,24 +128,6 @@ function App() {
       description: `${title} está agora visível para candidatos no swipe.`,
     });
     setScreen('jobs');
-  };
-
-  const handleToggleJobStatus = (jobId: string) => {
-    setRecruiterJobs((prev) =>
-      prev.map((j) =>
-        j.id === jobId
-          ? { ...j, status: j.status === 'Ativa' ? 'Pausada' : 'Ativa' }
-          : j
-      )
-    );
-  };
-
-  const handleDeleteJob = (jobId: string) => {
-    setRecruiterJobs((prev) => prev.filter((j) => j.id !== jobId));
-    toast({
-      title: 'Vaga excluída',
-      description: 'A vaga foi removida da sua lista.',
-    });
   };
 
   if (isResetPasswordRoute) {
@@ -246,13 +208,9 @@ function App() {
           {screen === 'profile' && <Profile />}
           {screen === 'dashboard' && <Dashboard onNavigate={setScreen} />}
           {screen === 'jobs' && (
-            <JobsManagement
-              jobs={recruiterJobs}
-              jobCandidates={jobCandidates}
+            <RecruiterJobs
               onNewJob={() => setScreen('job-create')}
               onNavigate={setScreen}
-              onToggleJobStatus={handleToggleJobStatus}
-              onDeleteJob={handleDeleteJob}
             />
           )}
           {screen === 'job-create' && (
@@ -275,9 +233,7 @@ function App() {
         {role === 'candidate' ? (
           <CandidateOnboardingGate>{appContent}</CandidateOnboardingGate>
         ) : (
-          <RecruiterOnboardingGate onLogout={handleLogout}>
-            {appContent}
-          </RecruiterOnboardingGate>
+          appContent
         )}
       </TcleConsentGate>
       <Toaster />
