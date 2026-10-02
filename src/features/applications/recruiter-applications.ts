@@ -1,4 +1,5 @@
 import type { ApplicationStatus, PipelineCandidate } from '../../lib/types';
+import type { Database } from '../../shared/types/database';
 
 // Linha como vem do banco: candidaturas das vagas do recrutador, com dados do
 // candidato e da vaga embutidos (ver recruiter-applications.api.ts).
@@ -29,6 +30,21 @@ export const STAGE_LABELS: Record<string, ApplicationStatus> = {
   approved: 'Aprovado',
   rejected: 'Rejeitado',
 };
+
+type DbApplicationStatus = Database['public']['Enums']['application_status'];
+
+// Inversa de STAGE_LABELS: nome mostrado na tela -> etapa do banco.
+export const DB_STAGE_BY_STATUS = Object.entries(STAGE_LABELS).reduce(
+  (acc, [dbStatus, stage]) => {
+    acc[stage] = dbStatus as DbApplicationStatus;
+    return acc;
+  },
+  {} as Record<ApplicationStatus, DbApplicationStatus>,
+);
+
+export function stageToDbStatus(stage: ApplicationStatus): DbApplicationStatus {
+  return DB_STAGE_BY_STATUS[stage];
+}
 
 const AVATAR_COLORS = ['bg-jm-purple', 'bg-jm-teal', 'bg-jm-orange', 'bg-primary'];
 
