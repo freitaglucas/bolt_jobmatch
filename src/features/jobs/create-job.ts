@@ -58,6 +58,7 @@ export async function createJob(input: CreateJobInput): Promise<{ id: string }> 
       location: data.location,
       salary_range: data.salaryRange ?? null,
       employment_type: data.employmentType,
+      seniority: data.seniority ?? null,
       status: 'draft',
     })
     .select('id')
