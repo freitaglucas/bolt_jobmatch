@@ -16,6 +16,7 @@ import {
   XCircle,
   Sparkles,
   ChevronDown,
+  Award,
 } from 'lucide-react';
 import type { Job } from '@/lib/types';
 import { useActiveJobs, useSwipeDeck, type SwipeDeckCard } from '@/features/jobs/hooks';
@@ -23,9 +24,11 @@ import {
   applyJobFilters,
   DEFAULT_JOB_FILTERS,
   hasActiveFilters,
+  listJobSeniorities,
   listJobSkillNames,
   type JobFilters,
 } from '@/features/jobs/filters';
+import { seniorityLabel } from '@/features/jobs/seniority';
 import { JobFiltersBar } from '@/features/jobs/components/JobFiltersBar';
 import { useMyMatchSkills } from '@/features/candidates/hooks';
 import { calculateSwipeMatch } from '@/features/match/adapters/swipeMatchAdapter';
@@ -180,6 +183,12 @@ function JobCard({
                 <Coins className="h-3.5 w-3.5" />
                 {job.salary}
               </span>
+              {job.seniority && (
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <Award className="h-3.5 w-3.5" />
+                  {seniorityLabel(job.seniority)}
+                </span>
+              )}
             </div>
           </div>
 
@@ -267,6 +276,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
   const jobs = jobsQuery.data ?? EMPTY_JOBS;
   const candidateSkills = skillsQuery.data ?? EMPTY_SKILLS;
   const availableSkills = useMemo(() => listJobSkillNames(jobs), [jobs]);
+  const availableSeniorities = useMemo(() => listJobSeniorities(jobs), [jobs]);
   const filteredJobs = useMemo(
     () =>
       applyJobFilters(
@@ -354,6 +364,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
       {jobs.length > 0 && (
         <JobFiltersBar
           availableSkills={availableSkills}
+          availableSeniorities={availableSeniorities}
           value={filters}
           onChange={setFilters}
           resultCount={filteredJobs.length}
@@ -378,7 +389,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
                     Nenhuma vaga com esses filtros
                   </h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Tente outras competências ou limpe os filtros.
+                    Tente outros filtros ou limpe os filtros.
                   </p>
                   <Button
                     variant="outline"
@@ -474,3 +485,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
     </div>
   );
 }
+
+
+
+

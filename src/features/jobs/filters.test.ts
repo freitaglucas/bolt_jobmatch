@@ -4,10 +4,16 @@ import {
   applyJobFilters,
   DEFAULT_JOB_FILTERS,
   hasActiveFilters,
+  listJobSeniorities,
   listJobSkillNames,
 } from './filters';
+import type { SeniorityValue } from './seniority';
 
-function makeJob(id: string, skillNames: string[]): Job {
+function makeJob(
+  id: string,
+  skillNames: string[],
+  seniority?: SeniorityValue,
+): Job {
   return {
     id,
     title: `Vaga ${id}`,
@@ -27,6 +33,7 @@ function makeJob(id: string, skillNames: string[]): Job {
     posted: '',
     tags: skillNames,
     status: 'Ativa',
+    seniority: seniority ?? null,
     candidatesCount: 0,
     newCandidatesCount: 0,
     interviewCount: 0,
@@ -34,8 +41,8 @@ function makeJob(id: string, skillNames: string[]): Job {
 }
 
 const JOBS: Job[] = [
-  makeJob('a', ['SQL', 'Python']),
-  makeJob('b', ['Comunicação']),
+  makeJob('a', ['SQL', 'Python'], 'pleno'),
+  makeJob('b', ['Comunicação'], 'senior'),
   makeJob('c', ['Python', 'Liderança']),
 ];
 
@@ -51,7 +58,7 @@ describe('applyJobFilters', () => {
   it('keeps jobs that have any of the chosen skills', () => {
     const result = applyJobFilters(
       JOBS,
-      { skillNames: ['Python', 'Comunicação'], sort: 'recent' },
+      { ...DEFAULT_JOB_FILTERS, skillNames: ['Python', 'Comunicação'] },
       getScore,
     );
     expect(result.map((job) => job.id)).toEqual(['a', 'b', 'c']);
@@ -60,7 +67,7 @@ describe('applyJobFilters', () => {
   it('ignores accents and case when filtering', () => {
     const result = applyJobFilters(
       JOBS,
-      { skillNames: ['comunicacao'], sort: 'recent' },
+      { ...DEFAULT_JOB_FILTERS, skillNames: ['comunicacao'] },
       getScore,
     );
     expect(result.map((job) => job.id)).toEqual(['b']);
@@ -69,23 +76,41 @@ describe('applyJobFilters', () => {
   it('returns nothing when no job has the skill', () => {
     const result = applyJobFilters(
       JOBS,
-      { skillNames: ['Excel'], sort: 'recent' },
+      { ...DEFAULT_JOB_FILTERS, skillNames: ['Excel'] },
       getScore,
     );
     expect(result).toEqual([]);
   });
 
+  it('keeps jobs that have any of the chosen seniorities and hides jobs without one', () => {
+    const result = applyJobFilters(
+      JOBS,
+      { ...DEFAULT_JOB_FILTERS, seniorities: ['pleno', 'senior'] },
+      getScore,
+    );
+    expect(result.map((job) => job.id)).toEqual(['a', 'b']);
+  });
+
+  it('combines skills and seniority with "and"', () => {
+    const result = applyJobFilters(
+      JOBS,
+      { ...DEFAULT_JOB_FILTERS, skillNames: ['Python'], seniorities: ['pleno'] },
+      getScore,
+    );
+    expect(result.map((job) => job.id)).toEqual(['a']);
+  });
+
   it('sorts by match score, highest first, keeping the order on ties', () => {
     const result = applyJobFilters(
       JOBS,
-      { skillNames: [], sort: 'match' },
+      { ...DEFAULT_JOB_FILTERS, sort: 'match' },
       getScore,
     );
     expect(result.map((job) => job.id)).toEqual(['b', 'a', 'c']);
   });
 
   it('does not change the original list', () => {
-    applyJobFilters(JOBS, { skillNames: [], sort: 'match' }, getScore);
+    applyJobFilters(JOBS, { ...DEFAULT_JOB_FILTERS, sort: 'match' }, getScore);
     expect(JOBS.map((job) => job.id)).toEqual(['a', 'b', 'c']);
   });
 });
@@ -106,13 +131,29 @@ describe('listJobSkillNames', () => {
   });
 });
 
+describe('listJobSeniorities', () => {
+  it('lists only the levels that exist, in the official order', () => {
+    const jobs = [
+      makeJob('x', ['SQL'], 'gerente'),
+      makeJob('y', ['SQL'], 'junior'),
+      makeJob('z', ['SQL']),
+    ];
+    expect(listJobSeniorities(jobs)).toEqual(['junior', 'gerente']);
+  });
+
+  it('returns an empty list when no job has seniority', () => {
+    expect(listJobSeniorities([makeJob('x', ['SQL'])])).toEqual([]);
+  });
+});
+
 describe('hasActiveFilters', () => {
   it('is false for the default filters', () => {
     expect(hasActiveFilters(DEFAULT_JOB_FILTERS)).toBe(false);
   });
 
-  it('is true when a skill is chosen or the sort changes', () => {
-    expect(hasActiveFilters({ skillNames: ['SQL'], sort: 'recent' })).toBe(true);
-    expect(hasActiveFilters({ skillNames: [], sort: 'match' })).toBe(true);
+  it('is true when a skill or seniority is chosen or the sort changes', () => {
+    expect(hasActiveFilters({ ...DEFAULT_JOB_FILTERS, skillNames: ['SQL'] })).toBe(true);
+    expect(hasActiveFilters({ ...DEFAULT_JOB_FILTERS, seniorities: ['pleno'] })).toBe(true);
+    expect(hasActiveFilters({ ...DEFAULT_JOB_FILTERS, sort: 'match' })).toBe(true);
   });
 });
