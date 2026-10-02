@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SENIORITY_VALUES } from './seniority';
 
 export const EMPLOYMENT_TYPES = ['CLT', 'PJ', 'Híbrido'] as const;
 
@@ -37,6 +38,11 @@ export const CreateJobSchema = z.object({
   employmentType: z.enum(EMPLOYMENT_TYPES, {
     errorMap: () => ({ message: 'Escolha um tipo de contratação válido.' }),
   }),
+  seniority: z
+    .enum(SENIORITY_VALUES, {
+      errorMap: () => ({ message: 'Escolha um nível de senioridade válido.' }),
+    })
+    .optional(),
   skills: z
     .array(JobSkillInputSchema)
     .min(1, 'Adicione pelo menos uma competência.')

@@ -1,5 +1,6 @@
 import { supabase } from '../../shared/lib/supabase';
 import type { Job } from '../../lib/types';
+import { toSeniority } from './seniority';
 
 function formatPostedDate(createdAt: string): string {
   return `Publicado em ${new Intl.DateTimeFormat('pt-BR', {
@@ -97,6 +98,7 @@ export async function getActiveJobs(): Promise<Job[]> {
         return name ? [name] : [];
       }),
       status: 'Ativa',
+      seniority: toSeniority(job.seniority),
       candidatesCount: 0,
       newCandidatesCount: 0,
       interviewCount: 0,

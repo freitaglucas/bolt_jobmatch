@@ -246,13 +246,13 @@ isOneToOne: false
                   ]
                 },"jobs": {
                   Row: {
-                    "company_id": string | null,"created_at": string,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"location": string,"pipeline_stages": (string)[],"recruiter_id": string,"salary_range": string | null,"status": Database["public"]['Enums']["job_status"],"title": string,"updated_at": string
+                    "company_id": string | null,"created_at": string,"description": string,"employment_type": Database["public"]['Enums']["employment_type"],"id": string,"location": string,"pipeline_stages": (string)[],"recruiter_id": string,"salary_range": string | null,"seniority": string | null,"status": Database["public"]['Enums']["job_status"],"title": string,"updated_at": string
                   }
                   Insert: {
-                    "company_id"?: string | null,"created_at"?: string,"description"?: string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"location"?: string,"pipeline_stages"?: (string)[],"recruiter_id": string,"salary_range"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"title": string,"updated_at"?: string
+                    "company_id"?: string | null,"created_at"?: string,"description"?: string,"employment_type": Database["public"]['Enums']["employment_type"],"id"?: string,"location"?: string,"pipeline_stages"?: (string)[],"recruiter_id": string,"salary_range"?: string | null,"seniority"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "company_id"?: string | null,"created_at"?: string,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"location"?: string,"pipeline_stages"?: (string)[],"recruiter_id"?: string,"salary_range"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"title"?: string,"updated_at"?: string
+                    "company_id"?: string | null,"created_at"?: string,"description"?: string,"employment_type"?: Database["public"]['Enums']["employment_type"],"id"?: string,"location"?: string,"pipeline_stages"?: (string)[],"recruiter_id"?: string,"salary_range"?: string | null,"seniority"?: string | null,"status"?: Database["public"]['Enums']["job_status"],"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {

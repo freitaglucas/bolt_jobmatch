@@ -1,3 +1,5 @@
+import type { SeniorityValue } from '../features/jobs/seniority';
+
 export type Role = 'candidate' | 'recruiter';
 
 export type Seniority = 'Junior' | 'Pleno' | 'Senior' | 'Especialista';
@@ -29,6 +31,7 @@ export interface Job {
   newCandidatesCount: number;
   interviewCount: number;
   hire?: HireInfo;
+  seniority?: SeniorityValue | null;
 }
 
 export interface HireInfo {
