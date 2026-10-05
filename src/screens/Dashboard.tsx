@@ -1,48 +1,108 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { MatchScoreRing } from '@/components/MatchScoreRing';
 import {
-  Briefcase,
-  Users,
-  UserPlus,
-  Calendar,
-  TrendingUp,
   ArrowRight,
-  KanbanSquare,
-  Coins,
-  Plus,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
   Clock,
-  DollarSign,
+  Coins,
   HeartHandshake,
+  KanbanSquare,
+  Plus,
+  TrendingUp,
+  UserPlus,
+  Users,
+  XCircle,
 } from 'lucide-react';
-import { recruiterStats, mockPipelineCandidates, mockTokenEvents } from '@/lib/mock-data';
-import { cn } from '@/lib/utils';
-import type { Screen } from '@/components/Layout';
+import { MatchScoreRing } from '../components/MatchScoreRing';
+import type { Screen } from '../components/Layout';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import {
+  buildDashboardStats,
+  pickTopCandidates,
+} from '../features/applications/dashboard-stats';
+import { mapRecruiterApplication } from '../features/applications/recruiter-applications';
+import { useRecruiterApplications } from '../features/applications/recruiter-applications.hooks';
+import { useRecruiterJobs } from '../features/jobs/recruiter-jobs.hooks';
+import { cn } from '../lib/utils';
 
 interface DashboardProps {
   onNavigate: (screen: Screen) => void;
 }
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export function Dashboard({ onNavigate }: DashboardProps) {
+  const applicationsQuery = useRecruiterApplications();
+  const jobsQuery = useRecruiterJobs();
+
+  const candidates = useMemo(
+    () =>
+      (applicationsQuery.data ?? []).flatMap((row) => {
+        const candidate = mapRecruiterApplication(row);
+        return candidate ? [candidate] : [];
+      }),
+    [applicationsQuery.data],
+  );
+
+  const summary = useMemo(
+    () => buildDashboardStats(candidates, jobsQuery.data ?? []),
+    [candidates, jobsQuery.data],
+  );
+  const topCandidates = useMemo(() => pickTopCandidates(candidates), [candidates]);
+
+  if (applicationsQuery.isLoading || jobsQuery.isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10 text-sm text-muted-foreground">
+        Carregando o dashboard...
+      </div>
+    );
+  }
+
+  if (applicationsQuery.isError || jobsQuery.isError) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-10 space-y-3">
+        <p className="text-sm text-destructive">
+          Não foi possível carregar o dashboard.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            void applicationsQuery.refetch();
+            void jobsQuery.refetch();
+          }}
+        >
+          Tentar de novo
+        </Button>
+      </div>
+    );
+  }
+
   const stats = [
-    { label: 'Vagas ativas', value: recruiterStats.activeJobs, icon: Briefcase, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
-    { label: 'Candidaturas', value: recruiterStats.totalApplications, icon: Users, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
-    { label: 'Novas', value: recruiterStats.newApplications, icon: UserPlus, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
-    { label: 'Entrevistas', value: recruiterStats.interviews, icon: Calendar, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
+    { label: 'Vagas ativas', value: summary.activeJobs, icon: Briefcase, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
+    { label: 'Candidaturas', value: summary.totalApplications, icon: Users, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
+    { label: 'Novas (em análise)', value: summary.newApplications, icon: UserPlus, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
+    { label: 'Em entrevista', value: summary.interviews, icon: Calendar, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
   ];
 
-  const hireStats = [
-    { label: 'Vagas fechadas', value: recruiterStats.closedJobs, icon: Briefcase, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
-    { label: 'Tempo médio', value: `${recruiterStats.avgTimeToHire}d`, icon: Clock, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
-    { label: 'Custo médio', value: `R$ ${(recruiterStats.avgCostPerHire / 1000).toFixed(1)}k`, icon: DollarSign, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
-    { label: 'Tokens ganhos', value: `+${recruiterStats.totalTokensFromHires}`, icon: Coins, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
+  const resultStats = [
+    { label: 'Aprovados', value: summary.approved, icon: CheckCircle2, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
+    { label: 'Rejeitados', value: summary.rejected, icon: XCircle, color: 'text-jm-red', bg: 'bg-jm-red/10' },
+    { label: 'Vagas pausadas ou em rascunho', value: summary.pausedOrDraftJobs, icon: Clock, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
+    { label: 'Vagas fechadas', value: summary.closedJobs, icon: Briefcase, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
   ];
-
-  const topCandidates = [...mockPipelineCandidates]
-    .sort((a, b) => b.matchScore - a.matchScore)
-    .slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
@@ -67,7 +127,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {stats.map((stat, i) => (
           <motion.div
-            key={i}
+            key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
@@ -89,15 +149,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         ))}
       </div>
 
-      {/* Hire metrics */}
+      {/* Result metrics */}
       <div className="mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Métricas de contratação
+          Resultado das candidaturas
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {hireStats.map((stat, i) => (
+          {resultStats.map((stat, i) => (
             <motion.div
-              key={i}
+              key={stat.label}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + i * 0.08 }}
@@ -133,7 +193,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <div className="flex-1">
               <h3 className="font-semibold">Pipeline de candidatos</h3>
               <p className="text-sm text-muted-foreground">
-                Gerencie o funil com drag & drop
+                Mova candidatos entre as etapas e envie feedback
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
@@ -169,7 +229,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <div className="flex-1">
               <h3 className="font-semibold">Jornada do recrutamento</h3>
               <p className="text-sm text-muted-foreground">
-                Saldo: {recruiterStats.tokenBalance} tokens
+                Saldo e extrato em breve
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
@@ -177,91 +237,57 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </Card>
       </div>
 
-      {/* Top candidates + Token activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top candidates */}
-        <Card className="border-border lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Top candidatos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {topCandidates.map((candidate, i) => (
-              <div
-                key={candidate.id}
-                className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="text-muted-foreground text-sm font-semibold w-5">
-                    {i + 1}
-                  </div>
-                  <div className={cn('w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0', candidate.avatarColor)}>
-                    {candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">{candidate.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {candidate.role} · {candidate.seniority}
-                    </div>
-                  </div>
+      {/* Top candidates */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Top candidatos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {topCandidates.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma candidatura recebida ainda.
+            </p>
+          )}
+          {topCandidates.map((candidate, i) => (
+            <div
+              key={candidate.id}
+              className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="text-muted-foreground text-sm font-semibold w-5">
+                  {i + 1}
                 </div>
-                <Badge variant="secondary" className="shrink-0">
-                  {candidate.stage}
-                </Badge>
-                <MatchScoreRing score={candidate.matchScore} size={48} strokeWidth={4} showLabel={true} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Token activity */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Coins className="h-5 w-5 text-jm-teal" />
-              Atividade de tokens
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-center pb-3 border-b border-border">
-              <div className="text-3xl font-bold text-gradient-purple-teal">
-                {recruiterStats.tokenBalance}
-              </div>
-              <div className="text-xs text-muted-foreground">tokens disponíveis</div>
-            </div>
-            {mockTokenEvents.slice(0, 4).map((event) => (
-              <div key={event.id} className="flex items-center gap-3 text-sm">
                 <div
                   className={cn(
-                    'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                    event.type === 'earn' ? 'bg-jm-teal/15' : 'bg-jm-orange/15'
+                    'w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0',
+                    candidate.avatarColor,
                   )}
                 >
-                  <span className={cn('text-xs font-bold', event.type === 'earn' ? 'text-jm-teal' : 'text-jm-orange')}>
-                    {event.type === 'earn' ? '+' : '-'}
-                  </span>
+                  {initials(candidate.name)}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs truncate">{event.action}</p>
-                  <p className="text-[10px] text-muted-foreground">{event.date}</p>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{candidate.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {candidate.role} · {candidate.seniority}
+                  </div>
+                  {candidate.jobTitle && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {candidate.jobTitle}
+                    </div>
+                  )}
                 </div>
-                <span className={cn('text-sm font-semibold shrink-0', event.type === 'earn' ? 'text-jm-teal' : 'text-jm-orange')}>
-                  {event.type === 'earn' ? '+' : '-'}{event.amount}
-                </span>
               </div>
-            ))}
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => onNavigate('tokens')}
-            >
-              Ver histórico completo
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+              <Badge variant="secondary" className="shrink-0">
+                {candidate.stage}
+              </Badge>
+              <MatchScoreRing score={candidate.matchScore} size={48} strokeWidth={4} showLabel={true} />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

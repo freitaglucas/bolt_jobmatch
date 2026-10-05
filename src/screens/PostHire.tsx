@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
+// TODO(mock): dados de exemplo ate a Fase 3 (tokens e SLA) / pos-contratacao.
+
 import { mockPostHireRecords, recruiterStats } from '@/lib/mock-data';
 import type { PostHireRecord, PostHireCheckpoint, PostHireFeedback, CheckpointStatus } from '@/lib/types';
 

@@ -514,13 +514,6 @@ export const recruiterStats = {
   totalTokensFromHires: 330,
 };
 
-export function getScoreColor(score: number): string {
-  if (score >= 80) return 'text-jm-purple';
-  if (score >= 60) return 'text-jm-teal';
-  if (score >= 40) return 'text-jm-orange';
-  return 'text-jm-red';
-}
-
 export function getScoreBgColor(score: number): string {
   if (score >= 80) return 'bg-jm-purple';
   if (score >= 60) return 'bg-jm-teal';
