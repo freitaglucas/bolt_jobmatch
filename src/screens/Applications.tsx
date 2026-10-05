@@ -1,21 +1,23 @@
 import { motion } from 'framer-motion';
-import { MatchScoreRing } from '@/components/MatchScoreRing';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Building2,
+  Calendar,
+  Check,
   CheckCircle2,
   Clock,
-  XCircle,
   FileText,
-  Calendar,
   MessageSquare,
-  Check,
+  XCircle,
 } from 'lucide-react';
-import { mockApplications } from '@/lib/mock-data';
-import type { Application, ApplicationStatus } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { MatchScoreRing } from '../components/MatchScoreRing';
+import type { Screen } from '../components/Layout';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import type { CandidateApplication } from '../features/applications/candidate-applications';
+import { useCandidateApplications } from '../features/applications/hooks';
+import type { ApplicationStatus } from '../lib/types';
+import { cn } from '../lib/utils';
 
 function statusConfig(status: ApplicationStatus) {
   const config: Record<ApplicationStatus, { color: string; bg: string; icon: typeof Clock }> = {
@@ -29,18 +31,20 @@ function statusConfig(status: ApplicationStatus) {
   return config[status];
 }
 
-function Timeline({ application }: { application: Application }) {
+function Timeline({ application }: { application: CandidateApplication }) {
+  const { timeline, feedback } = application;
+
   return (
     <div className="mt-4 pt-4 border-t border-border">
       <h4 className="text-sm font-semibold mb-3">Linha do tempo</h4>
       <div className="space-y-3">
-        {application.timeline.map((step, i) => (
-          <div key={i} className="flex items-start gap-3">
+        {timeline.map((step, i) => (
+          <div key={`${step.label}-${i}`} className="flex items-start gap-3">
             <div className="relative">
               <div
                 className={cn(
                   'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
-                  step.done ? 'bg-jm-teal/15' : 'bg-muted'
+                  step.done ? 'bg-jm-teal/15' : 'bg-muted',
                 )}
               >
                 {step.done ? (
@@ -49,33 +53,42 @@ function Timeline({ application }: { application: Application }) {
                   <Clock className="h-3 w-3 text-muted-foreground" />
                 )}
               </div>
-              {i < application.timeline.length - 1 && (
+              {i < timeline.length - 1 && (
                 <div
                   className={cn(
                     'absolute left-1/2 -translate-x-1/2 top-7 w-0.5 h-6',
-                    step.done ? 'bg-jm-teal/30' : 'bg-muted'
+                    step.done ? 'bg-jm-teal/30' : 'bg-muted',
                   )}
                 />
               )}
             </div>
             <div className="flex-1 pt-0.5">
               <div className="flex items-center justify-between">
-                <span className={cn('text-sm', step.done ? 'text-foreground' : 'text-muted-foreground')}>
+                <span
+                  className={cn(
+                    'text-sm',
+                    step.done ? 'text-foreground' : 'text-muted-foreground',
+                  )}
+                >
                   {step.label}
                 </span>
-                <span className="text-xs text-muted-foreground">{step.date}</span>
+                {step.date && (
+                  <span className="text-xs text-muted-foreground">{step.date}</span>
+                )}
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {application.feedback && (
+      {feedback && (
         <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
           <p className="text-xs font-semibold text-primary mb-1">Feedback do recrutador</p>
-          <p className="text-sm text-muted-foreground">{application.feedback.content}</p>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">
+            {feedback.content}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Enviado em {application.feedback.sentAt}
+            Enviado em {feedback.sentAt}
           </p>
         </div>
       )}
@@ -83,72 +96,104 @@ function Timeline({ application }: { application: Application }) {
   );
 }
 
-export function Applications() {
+export function Applications({
+  onNavigate,
+}: {
+  onNavigate?: (screen: Screen) => void;
+}) {
+  const query = useCandidateApplications();
+  const applications = query.data ?? [];
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Minhas candidaturas</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Acompanhe o status de cada vaga em tempo real
+          Acompanhe a etapa de cada vaga e o retorno do recrutador
         </p>
       </div>
 
-      <div className="space-y-4">
-        {/* TODO(mock): trocar por useCandidateApplications() quando a tela for ligada ao banco. */}
-        {mockApplications.map((app, i) => {
-          const cfg = statusConfig(app.status);
-          const StatusIcon = cfg.icon;
+      {query.isLoading && (
+        <p className="text-sm text-muted-foreground">Carregando suas candidaturas...</p>
+      )}
 
-          return (
-            <motion.div
-              key={app.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Card className="border-border hover:border-primary/20 transition-all">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <MatchScoreRing score={app.matchScore} size={64} strokeWidth={5} />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold truncate">{app.jobTitle}</h3>
-                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {app.company}
-                          </div>
-                        </div>
-                        <Badge className={cn('shrink-0', cfg.bg, cfg.color, 'border-0')}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {app.status}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Candidatado em {app.appliedDate.split('-').reverse().join('/')}
-                        </span>
-                      </div>
-
-                      <Timeline application={app} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {mockApplications.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-muted-foreground">Você ainda não se candidatou a nenhuma vaga.</p>
-          <Button className="mt-4 bg-gradient-purple-teal text-white border-0">
-            Explorar vagas
+      {query.isError && (
+        <div className="space-y-3">
+          <p className="text-sm text-destructive">
+            Não foi possível carregar suas candidaturas.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
+            Tentar de novo
           </Button>
+        </div>
+      )}
+
+      {!query.isLoading && !query.isError && (
+        <div className="space-y-4">
+          {applications.map((app, i) => {
+            const cfg = statusConfig(app.stage);
+            const StatusIcon = cfg.icon;
+
+            return (
+              <motion.div
+                key={app.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <Card className="border-border hover:border-primary/20 transition-all">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <MatchScoreRing score={app.matchScore} size={64} strokeWidth={5} />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold truncate">{app.jobTitle}</h3>
+                            {app.companyName && (
+                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+                                <Building2 className="h-3.5 w-3.5" />
+                                {app.companyName}
+                              </div>
+                            )}
+                          </div>
+                          <Badge className={cn('shrink-0', cfg.bg, cfg.color, 'border-0')}>
+                            <StatusIcon className="h-3 w-3 mr-1" />
+                            {app.stage}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Candidatado em {app.appliedDate}
+                          </span>
+                        </div>
+
+                        <Timeline application={app} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+
+          {applications.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-muted-foreground">
+                Você ainda não se candidatou a nenhuma vaga.
+              </p>
+              {onNavigate && (
+                <Button
+                  className="mt-4 bg-gradient-purple-teal text-white border-0"
+                  onClick={() => onNavigate('swipe')}
+                >
+                  Explorar vagas
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

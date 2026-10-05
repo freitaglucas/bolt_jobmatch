@@ -1,15 +1,20 @@
 import type { ApplicationFeedback, ApplicationStatus } from '../../lib/types';
+import {
+  buildCandidateTimeline,
+  type CandidateTimelineStep,
+  type StageHistoryRow,
+} from './candidate-timeline';
 import { STAGE_LABELS } from './recruiter-applications';
 
-// Linha como vem do banco: candidaturas do proprio candidato, com o titulo da
-// vaga e os feedbacks recebidos embutidos (ver api.ts).
+// Linha como vem do banco: candidaturas do proprio candidato, com a vaga, a
+// empresa, os feedbacks recebidos e o historico de etapas embutidos (ver api.ts).
 export interface CandidateApplicationRow {
   id: string;
   job_id: string;
   current_stage: string;
   match_score: number;
   created_at: string;
-  jobs: { title: string } | null;
+  jobs: { title: string; companies: { name: string } | null } | null;
   feedbacks:
     | {
         content: string;
@@ -17,6 +22,7 @@ export interface CandidateApplicationRow {
         created_at: string;
       }[]
     | null;
+  application_stages: StageHistoryRow[] | null;
 }
 
 // Formato que a tela "Minhas candidaturas" usa.
@@ -24,9 +30,11 @@ export interface CandidateApplication {
   id: string;
   jobId: string;
   jobTitle: string;
+  companyName: string | null;
   stage: ApplicationStatus;
   matchScore: number;
   appliedDate: string;
+  timeline: CandidateTimelineStep[];
   feedback: ApplicationFeedback | null;
 }
 
@@ -57,17 +65,24 @@ export function latestFeedback(
 
 // Converte uma linha do banco para o formato da tela do candidato. A etapa
 // exibida vem de applications.current_stage (a mesma coluna que o recrutador
-// atualiza).
+// atualiza). Etapa que a tela nao mostra (ex.: withdrawn) devolve null.
 export function mapCandidateApplication(
   row: CandidateApplicationRow,
-): CandidateApplication {
+): CandidateApplication | null {
+  const stage = STAGE_LABELS[row.current_stage];
+  if (!stage) {
+    return null;
+  }
+
   return {
     id: row.id,
     jobId: row.job_id,
-    jobTitle: row.jobs?.title ?? 'Vaga',
-    stage: STAGE_LABELS[row.current_stage] ?? 'Em análise',
+    jobTitle: row.jobs?.title ?? 'Vaga indisponível',
+    companyName: row.jobs?.companies?.name ?? null,
+    stage,
     matchScore: Number(row.match_score),
     appliedDate: new Date(row.created_at).toLocaleDateString('pt-BR'),
+    timeline: buildCandidateTimeline(row.application_stages, stage),
     feedback: latestFeedback(row.feedbacks),
   };
 }

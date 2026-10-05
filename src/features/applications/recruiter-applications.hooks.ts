@@ -34,6 +34,9 @@ export function useMoveApplicationStage() {
       void queryClient.invalidateQueries({
         queryKey: RECRUITER_APPLICATIONS_QUERY_KEY,
       });
+      void queryClient.invalidateQueries({
+        queryKey: CANDIDATE_APPLICATIONS_QUERY_KEY,
+      });
     },
   });
 }
