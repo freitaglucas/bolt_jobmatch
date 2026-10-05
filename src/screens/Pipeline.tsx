@@ -12,13 +12,19 @@ import {
 } from '@/components/ui/dialog';
 import { Briefcase, Calendar, MapPin } from 'lucide-react';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
-import type { PipelineCandidate } from '@/lib/types';
+import { Textarea } from '@/components/ui/textarea';
+import type { ApplicationStatus, PipelineCandidate } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { mapRecruiterApplication } from '@/features/applications/recruiter-applications';
 import {
   useMoveApplicationStage,
   useRecruiterApplications,
+  useSendApplicationFeedback,
 } from '@/features/applications/recruiter-applications.hooks';
+import {
+  FEEDBACK_MAX_LENGTH,
+  validateFeedback,
+} from '@/features/applications/feedback-rules';
 import {
   canReject,
   getNextStage,
@@ -271,17 +277,63 @@ function CandidateModal({
   onClose: () => void;
 }) {
   const moveStage = useMoveApplicationStage();
+  const sendFeedback = useSendApplicationFeedback();
   const [confirmingReject, setConfirmingReject] = useState(false);
+  const [feedbackText, setFeedbackText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Ao trocar de candidato, zera o texto digitado e a confirmacao.
   useEffect(() => {
     setConfirmingReject(false);
+    setFeedbackText('');
     setErrorMessage(null);
   }, [candidate]);
 
   if (!candidate) return null;
 
+  const candidateId = candidate.id;
   const nextStage = getNextStage(candidate.stage);
+  const isPending = moveStage.isPending || sendFeedback.isPending;
+
+  // Rejeitar exige feedback; avancar de etapa, nao. Havendo texto, ele e
+  // enviado ANTES de mover a candidatura: se o envio falhar, a etapa nao muda.
+  function handleStageChange(targetStage: ApplicationStatus) {
+    const validationError = validateFeedback(feedbackText, targetStage);
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+    setErrorMessage(null);
+
+    const advance = () =>
+      moveStage.mutate(
+        { applicationId: candidateId, stage: targetStage },
+        {
+          onSuccess: () => onClose(),
+          onError: () =>
+            setErrorMessage(
+              'Não foi possível mover a candidatura. Tente de novo.',
+            ),
+        },
+      );
+
+    const content = feedbackText.trim();
+    if (content.length === 0) {
+      advance();
+      return;
+    }
+
+    sendFeedback.mutate(
+      { applicationId: candidateId, content },
+      {
+        onSuccess: advance,
+        onError: () =>
+          setErrorMessage(
+            'Não foi possível enviar o feedback. A etapa não foi alterada.',
+          ),
+      },
+    );
+  }
 
   return (
     <Dialog open={!!candidate} onOpenChange={onClose}>
@@ -336,6 +388,22 @@ function CandidateModal({
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label htmlFor="candidate-feedback" className="text-sm font-medium">
+              Feedback para o candidato
+            </label>
+            <Textarea
+              id="candidate-feedback"
+              value={feedbackText}
+              maxLength={FEEDBACK_MAX_LENGTH}
+              placeholder="Conte o que pesou na decisão. Obrigatório ao rejeitar."
+              onChange={(event) => setFeedbackText(event.target.value)}
+            />
+            <p className="text-right text-xs text-muted-foreground">
+              {feedbackText.length}/{FEEDBACK_MAX_LENGTH}
+            </p>
+          </div>
+
           {errorMessage && (
             <p className="text-sm text-destructive">{errorMessage}</p>
           )}
@@ -343,19 +411,8 @@ function CandidateModal({
           {nextStage && (
             <Button
               className="w-full"
-              disabled={moveStage.isPending}
-              onClick={() =>
-                moveStage.mutate(
-                  { applicationId: candidate.id, stage: nextStage },
-                  {
-                    onSuccess: () => onClose(),
-                    onError: () =>
-                      setErrorMessage(
-                        'Não foi possível mover a candidatura. Tente de novo.',
-                      ),
-                  },
-                )
-              }
+              disabled={isPending}
+              onClick={() => handleStageChange(nextStage)}
             >
               Avançar para {nextStage}
             </Button>
@@ -371,19 +428,8 @@ function CandidateModal({
                   <Button
                     variant="destructive"
                     className="flex-1"
-                    disabled={moveStage.isPending}
-                    onClick={() =>
-                      moveStage.mutate(
-                        { applicationId: candidate.id, stage: 'Rejeitado' },
-                        {
-                          onSuccess: () => onClose(),
-                          onError: () =>
-                            setErrorMessage(
-                              'Não foi possível mover a candidatura. Tente de novo.',
-                            ),
-                        },
-                      )
-                    }
+                    disabled={isPending}
+                    onClick={() => handleStageChange('Rejeitado')}
                   >
                     Confirmar rejeição
                   </Button>

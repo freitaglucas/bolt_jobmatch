@@ -1,4 +1,9 @@
 import { supabase } from '../../shared/lib/supabase';
+import {
+  mapCandidateApplication,
+  type CandidateApplication,
+  type CandidateApplicationRow,
+} from './candidate-applications';
 
 export interface CreatedApplication {
   id: string;
@@ -53,4 +58,26 @@ export async function createApplication(
   }
 
   return { application: existingApplication, created: false };
+}
+
+export const CANDIDATE_APPLICATIONS_SELECT =
+  'id, job_id, current_stage, match_score, created_at, jobs(title), feedbacks(content, sent_to_candidate_at, created_at)';
+
+// "Minhas candidaturas". A policy de leitura de feedbacks nao exige
+// sent_to_candidate_at, entao filtramos para nao expor feedback ainda nao
+// enviado ao candidato.
+export async function listCandidateApplications(): Promise<CandidateApplication[]> {
+  const { data, error } = await supabase
+    .from('applications')
+    .select(CANDIDATE_APPLICATIONS_SELECT)
+    .not('feedbacks.sent_to_candidate_at', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as unknown as CandidateApplicationRow[]).map(
+    mapCandidateApplication,
+  );
 }
