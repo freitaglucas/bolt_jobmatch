@@ -39,6 +39,8 @@ import {
   filterCandidatesByJob,
 } from '@/features/applications/pipeline-view';
 import { useRecruiterJobs } from '@/features/jobs/recruiter-jobs.hooks';
+import { useTokenBalance } from '../features/tokens/hooks';
+import { INSUFFICIENT_TOKENS_MESSAGE, isInsufficientTokensError, STAGE_MOVE_COST } from '../features/tokens/token-rules';
 
 const JOB_STATUS_SUFFIX: Record<string, string> = {
   draft: ' (rascunho)',
@@ -278,6 +280,7 @@ function CandidateModal({
 }) {
   const moveStage = useMoveApplicationStage();
   const sendFeedback = useSendApplicationFeedback();
+  const balanceQuery = useTokenBalance();
   const [confirmingReject, setConfirmingReject] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -310,9 +313,11 @@ function CandidateModal({
         { applicationId: candidateId, stage: targetStage },
         {
           onSuccess: () => onClose(),
-          onError: () =>
+          onError: (error) =>
             setErrorMessage(
-              'Não foi possível mover a candidatura. Tente de novo.',
+              isInsufficientTokensError(error)
+                ? INSUFFICIENT_TOKENS_MESSAGE
+                : 'Não foi possível mover a candidatura. Tente de novo.',
             ),
         },
       );
@@ -406,6 +411,15 @@ function CandidateModal({
 
           {errorMessage && (
             <p className="text-sm text-destructive">{errorMessage}</p>
+          )}
+
+          {nextStage && (
+            <p className="text-xs text-center text-muted-foreground">
+              Avançar custa {STAGE_MOVE_COST} token
+              {typeof balanceQuery.data === 'number'
+                ? ` · Saldo: ${balanceQuery.data}`
+                : ''}
+            </p>
           )}
 
           {nextStage && (

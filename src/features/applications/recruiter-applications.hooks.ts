@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApplicationStatus } from '../../lib/types';
+import { TOKENS_QUERY_KEY } from '../tokens/hooks';
 import { CANDIDATE_APPLICATIONS_QUERY_KEY } from './hooks';
 import {
   listRecruiterApplications,
@@ -38,6 +39,9 @@ export function useMoveApplicationStage() {
         queryKey: CANDIDATE_APPLICATIONS_QUERY_KEY,
       });
     },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: TOKENS_QUERY_KEY });
+    },
   });
 }
 
@@ -54,6 +58,9 @@ export function useSendApplicationFeedback() {
       void queryClient.invalidateQueries({
         queryKey: CANDIDATE_APPLICATIONS_QUERY_KEY,
       });
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: TOKENS_QUERY_KEY });
     },
   });
 }

@@ -1,52 +1,47 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { ArrowDownLeft, ArrowUpRight, Coins, Info, TrendingUp } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { cn } from '../lib/utils';
+import { useTokenBalance, useTokenLedger } from '../features/tokens/hooks';
 import {
-  Coins,
-  TrendingUp,
-  Gift,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Trophy,
-  Star,
-  Target,
-  Zap,
-} from 'lucide-react';
-// TODO(mock): dados de exemplo ate a Fase 3 (tokens e SLA) / pos-contratacao.
+  FEEDBACK_REWARD,
+  INITIAL_TOKENS,
+  SLA_HOURS,
+  STAGE_MOVE_COST,
+  formatLedgerDate,
+  mapLedgerRow,
+  summarizeMonth,
+} from '../features/tokens/token-rules';
 
-import { mockTokenEvents, recruiterStats } from '@/lib/mock-data';
-import { cn } from '@/lib/utils';
-
-const rewards = [
-  { id: 'r1', icon: Star, title: 'Vaga em destaque', cost: 50, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
-  { id: 'r2', icon: Target, title: 'Banco de talentos premium', cost: 100, color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
-  { id: 'r3', icon: Zap, title: 'Busca avançada com IA', cost: 80, color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
-  { id: 'r4', icon: Trophy, title: 'Relatório de tendências', cost: 60, color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
-];
-
-const milestones = [
-  { label: 'Primeira contratação', tokens: 100, done: true },
-  { label: '5 candidaturas qualificadas', tokens: 50, done: true },
-  { label: 'Vaga com 10+ candidatos', tokens: 30, done: true },
-  { label: 'Contratação com match >= 90%', tokens: 150, done: false },
+const RULES = [
+  `${INITIAL_TOKENS} tokens de boas-vindas quando o seu perfil é aprovado.`,
+  `Avançar um candidato de etapa custa ${STAGE_MOVE_COST} token.`,
+  `Enviar feedback em até ${SLA_HOURS / 24} dias após a última mudança de etapa devolve ${FEEDBACK_REWARD} token (1 por candidatura e etapa).`,
+  'Rejeitar um candidato é sempre gratuito.',
 ];
 
 export function Tokens() {
+  const balanceQuery = useTokenBalance();
+  const ledgerQuery = useTokenLedger();
+
+  const entries = useMemo(
+    () => (ledgerQuery.data ?? []).map(mapLedgerRow),
+    [ledgerQuery.data],
+  );
+  const month = useMemo(() => summarizeMonth(entries, new Date()), [entries]);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Jornada do Recrutamento</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Ganhe tokens por boas contratações e troque por benefícios
+          Tokens incentivam feedback rápido e respeitoso para quem se candidata
         </p>
       </div>
 
-      {/* Token balance hero */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-border overflow-hidden mb-6">
           <div className="bg-gradient-purple-teal p-6 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -54,146 +49,101 @@ export function Tokens() {
               <span className="text-white/80 text-sm font-medium">Saldo de tokens</span>
             </div>
             <div className="text-5xl font-bold text-white">
-              {recruiterStats.tokenBalance}
+              {balanceQuery.isError
+                ? '—'
+                : balanceQuery.isLoading
+                  ? '...'
+                  : balanceQuery.data ?? 0}
             </div>
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <Badge className="bg-white/15 text-white border-0">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                +85 este mês
-              </Badge>
-              <Badge className="bg-white/15 text-white border-0">
-                <Trophy className="h-3 w-3 mr-1" />
-                Nível Ouro
-              </Badge>
-            </div>
+            {balanceQuery.isError && (
+              <p className="text-white/80 text-sm mt-2">
+                Não foi possível carregar o saldo.
+              </p>
+            )}
+            {!ledgerQuery.isLoading && !ledgerQuery.isError && (
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Badge className="bg-white/15 text-white border-0">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  +{month.earned} este mês
+                </Badge>
+                <Badge className="bg-white/15 text-white border-0">
+                  -{month.spent} este mês
+                </Badge>
+              </div>
+            )}
           </div>
         </Card>
       </motion.div>
 
-      {/* Rewards + Milestones */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Rewards */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Gift className="h-5 w-5 text-primary" />
-              Recompensas disponíveis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {rewards.map((reward) => {
-              const canAfford = recruiterStats.tokenBalance >= reward.cost;
-              return (
-                <div
-                  key={reward.id}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-primary/20 transition-colors"
-                >
-                  <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', reward.bg)}>
-                    <reward.icon className={cn('h-5 w-5', reward.color)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium">{reward.title}</h4>
-                    <p className="text-xs text-muted-foreground">{reward.cost} tokens</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={canAfford ? 'default' : 'outline'}
-                    disabled={!canAfford}
-                    className={canAfford ? 'bg-gradient-purple-teal text-white border-0' : ''}
-                  >
-                    {canAfford ? 'Resgatar' : 'Insuficiente'}
-                  </Button>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Milestones */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Trophy className="h-5 w-5 text-jm-teal" />
-              Conquistas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {milestones.map((milestone, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08 }}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border"
-              >
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-                    milestone.done ? 'bg-jm-teal/15' : 'bg-muted'
-                  )}
-                >
-                  <Trophy
-                    className={cn(
-                      'h-5 w-5',
-                      milestone.done ? 'text-jm-teal' : 'text-muted-foreground'
-                    )}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-medium">{milestone.label}</h4>
-                  <p className="text-xs text-muted-foreground">
-                    +{milestone.tokens} tokens
-                  </p>
-                </div>
-                {milestone.done ? (
-                  <Badge className="bg-jm-teal/15 text-jm-teal border-0">Concluído</Badge>
-                ) : (
-                  <Badge variant="outline">Em progresso</Badge>
-                )}
-              </motion.div>
+      <Card className="border-border mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Info className="h-5 w-5 text-primary" />
+            Como funciona
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2 text-sm text-muted-foreground list-disc pl-5">
+            {RULES.map((rule) => (
+              <li key={rule}>{rule}</li>
             ))}
-          </CardContent>
-        </Card>
-      </div>
+          </ul>
+        </CardContent>
+      </Card>
 
-      {/* History */}
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-lg">Histórico de tokens</CardTitle>
         </CardHeader>
         <CardContent>
+          {ledgerQuery.isLoading && (
+            <p className="text-sm text-muted-foreground">Carregando o histórico...</p>
+          )}
+          {ledgerQuery.isError && (
+            <p className="text-sm text-destructive">
+              Não foi possível carregar o histórico.
+            </p>
+          )}
+          {!ledgerQuery.isLoading && !ledgerQuery.isError && entries.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma movimentação de tokens ainda.
+            </p>
+          )}
           <div className="space-y-2">
-            {mockTokenEvents.map((event, i) => (
+            {entries.map((entry, i) => (
               <motion.div
-                key={event.id}
+                key={entry.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
+                transition={{ delay: Math.min(i, 10) * 0.04 }}
                 className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors"
               >
                 <div
                   className={cn(
                     'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                    event.type === 'earn' ? 'bg-jm-teal/15' : 'bg-jm-orange/15'
+                    entry.type === 'earn' ? 'bg-jm-teal/15' : 'bg-jm-orange/15',
                   )}
                 >
-                  {event.type === 'earn' ? (
+                  {entry.type === 'earn' ? (
                     <ArrowDownLeft className="h-5 w-5 text-jm-teal" />
                   ) : (
                     <ArrowUpRight className="h-5 w-5 text-jm-orange" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{event.action}</p>
-                  <p className="text-xs text-muted-foreground">{event.date}</p>
+                  <p className="text-sm font-medium">{entry.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatLedgerDate(entry.createdAt)}
+                  </p>
                 </div>
                 <span
                   className={cn(
                     'text-sm font-bold shrink-0',
-                    event.type === 'earn' ? 'text-jm-teal' : 'text-jm-orange'
+                    entry.type === 'earn' ? 'text-jm-teal' : 'text-jm-orange',
                   )}
                 >
-                  {event.type === 'earn' ? '+' : '-'}{event.amount}
+                  {entry.type === 'earn' ? '+' : '-'}
+                  {entry.amount}
                 </span>
               </motion.div>
             ))}
