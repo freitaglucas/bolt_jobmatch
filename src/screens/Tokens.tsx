@@ -13,6 +13,8 @@ import {
   Target,
   Zap,
 } from 'lucide-react';
+// TODO(mock): dados de exemplo ate a Fase 3 (tokens e SLA) / pos-contratacao.
+
 import { mockTokenEvents, recruiterStats } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
 

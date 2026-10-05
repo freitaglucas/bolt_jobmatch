@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { getScoreColor } from '@/lib/mock-data';
+import { getScoreColor, getScoreHex } from '../lib/score';
 
 interface MatchScoreRingProps {
   score: number;
@@ -24,13 +24,6 @@ export function MatchScoreRing({
   const offset = circumference - (score / 100) * circumference;
   const colorClass = getScoreColor(score);
 
-  const getColorHsl = (s: number) => {
-    if (s >= 80) return '#7C5CFF';
-    if (s >= 60) return '#14B8A6';
-    if (s >= 40) return '#F97316';
-    return '#EF4444';
-  };
-
   return (
     <div
       className={cn('relative inline-flex items-center justify-center', className)}
@@ -51,7 +44,7 @@ export function MatchScoreRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={getColorHsl(score)}
+          stroke={getScoreHex(score)}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
