@@ -204,7 +204,7 @@ function App() {
               alreadyApplied={appliedJobIds.has(selectedJob.id)}
             />
           )}
-          {screen === 'applications' && <Applications />}
+          {screen === 'applications' && <Applications onNavigate={setScreen} />}
           {screen === 'profile' && <Profile />}
           {screen === 'dashboard' && <Dashboard onNavigate={setScreen} />}
           {screen === 'jobs' && (
