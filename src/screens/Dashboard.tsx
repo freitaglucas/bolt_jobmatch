@@ -27,6 +27,7 @@ import {
 import { mapRecruiterApplication } from '../features/applications/recruiter-applications';
 import { useRecruiterApplications } from '../features/applications/recruiter-applications.hooks';
 import { useRecruiterJobs } from '../features/jobs/recruiter-jobs.hooks';
+import { useTokenBalance } from '../features/tokens/hooks';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -46,6 +47,7 @@ function initials(name: string): string {
 export function Dashboard({ onNavigate }: DashboardProps) {
   const applicationsQuery = useRecruiterApplications();
   const jobsQuery = useRecruiterJobs();
+  const tokenBalanceQuery = useTokenBalance();
 
   const candidates = useMemo(
     () =>
@@ -229,7 +231,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <div className="flex-1">
               <h3 className="font-semibold">Jornada do recrutamento</h3>
               <p className="text-sm text-muted-foreground">
-                Saldo e extrato em breve
+                {tokenBalanceQuery.isError
+                  ? 'Saldo indisponível'
+                  : tokenBalanceQuery.isLoading
+                    ? 'Carregando saldo...'
+                    : `${tokenBalanceQuery.data ?? 0} tokens disponíveis`}
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />

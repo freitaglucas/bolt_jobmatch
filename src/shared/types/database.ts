@@ -320,6 +320,32 @@ isOneToOne: true
                   Relationships: [
 
                   ]
+                },"token_ledger": {
+                  Row: {
+                    "amount": number,"application_id": string | null,"created_at": string,"id": string,"kind": string,"recruiter_id": string,"stage": Database["public"]['Enums']["application_status"] | null
+                  }
+                  Insert: {
+                    "amount": number,"application_id"?: string | null,"created_at"?: string,"id"?: string,"kind": string,"recruiter_id": string,"stage"?: Database["public"]['Enums']["application_status"] | null
+                  }
+                  Update: {
+                    "amount"?: number,"application_id"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"recruiter_id"?: string,"stage"?: Database["public"]['Enums']["application_status"] | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "token_ledger_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    },
+                    {
+      foreignKeyName: "token_ledger_recruiter_id_fkey"
+      columns: ["recruiter_id"]
+isOneToOne: false
+      referencedRelation: "recruiter_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"user_roles": {
                   Row: {
                     "created_at": string,"role": Database["public"]['Enums']["app_role"],"user_id": string
@@ -344,6 +370,12 @@ isOneToOne: true
                            },
 "can_recruiter_view_candidate":
 { Args: { "_candidate_id": string }; Returns: boolean
+                           },
+"feedback_sla":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"my_token_balance":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "has_role":
 { Args: { "_role": Database["public"]['Enums']["app_role"],"_user_id": string }; Returns: boolean
