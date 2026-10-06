@@ -17,7 +17,8 @@ export type Screen =
   | 'job-create'
   | 'pipeline'
   | 'post-hire'
-  | 'tokens';
+  | 'tokens'
+  | 'company';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'pipeline', label: 'Pipeline' },
   { screen: 'post-hire', label: 'Pós-contratação' },
   { screen: 'tokens', label: 'Jornada' },
+  { screen: 'company', label: 'Minha empresa' },
 ]
 
 export function Layout({
