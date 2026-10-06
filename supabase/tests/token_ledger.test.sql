@@ -1,9 +1,9 @@
--- Testes pgTAP do ledger de tokens (Fase 3a).
+-- Testes pgTAP do ledger de tokens (Fase 3a; N14: mover etapa e gratis).
 create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(21);
+select plan(22);
 
 -- Fixtures: R1/R2 aprovados, R3 nao aprovado, 4 candidatos, 1 vaga do R1, 4 candidaturas.
 insert into auth.users (
@@ -76,15 +76,15 @@ set local request.jwt.claims = '{"sub": "d1000000-0000-0000-0000-000000000001"}'
 
 select is((select public.my_token_balance()), 20, 'my_token_balance() = 20 para R1');
 
--- 5) Mover debita 1
+-- 5) Mover etapa e gratis
 update public.applications set current_stage = 'screening'
   where id = 'e1000000-0000-0000-0000-000000000001';
-select is((select public.my_token_balance()), 19, 'mover etapa debita 1 token');
+select is((select public.my_token_balance()), 20, 'mover etapa nao consome token');
 
 -- 6) Rejeitar e gratis
 update public.applications set current_stage = 'rejected'
   where id = 'e2000000-0000-0000-0000-000000000002';
-select is((select public.my_token_balance()), 19, 'rejeitar nao consome token');
+select is((select public.my_token_balance()), 20, 'rejeitar nao consome token');
 
 -- 7) Recrutador nao altera last_stage_change_at
 select throws_ok(
@@ -96,19 +96,19 @@ select throws_ok(
 insert into public.feedbacks (application_id, author_id, content, sent_to_candidate_at)
 values ('e1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001',
         'Feedback no prazo', now());
-select is((select public.my_token_balance()), 20, 'feedback no prazo credita 1 token');
+select is((select public.my_token_balance()), 21, 'feedback no prazo credita 1 token');
 
 -- 9) Segundo feedback na mesma etapa nao credita
 insert into public.feedbacks (application_id, author_id, content, sent_to_candidate_at)
 values ('e1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001',
         'Segundo feedback mesma etapa', now());
-select is((select public.my_token_balance()), 20, 'segundo feedback na mesma etapa nao credita');
+select is((select public.my_token_balance()), 21, 'segundo feedback na mesma etapa nao credita');
 
 -- 10) Rascunho nao credita
 insert into public.feedbacks (application_id, author_id, content)
 values ('e3000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001',
         'Rascunho');
-select is((select public.my_token_balance()), 20, 'feedback sem envio (rascunho) nao credita');
+select is((select public.my_token_balance()), 21, 'feedback sem envio (rascunho) nao credita');
 
 -- 11) Feedback atrasado nao credita
 reset role;
@@ -119,7 +119,7 @@ set local request.jwt.claims = '{"sub": "d1000000-0000-0000-0000-000000000001"}'
 insert into public.feedbacks (application_id, author_id, content, sent_to_candidate_at)
 values ('e4000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000001',
         'Feedback atrasado', now());
-select is((select public.my_token_balance()), 20, 'feedback fora do SLA nao credita');
+select is((select public.my_token_balance()), 21, 'feedback fora do SLA nao credita');
 
 -- 12-14) Ledger e somente leitura para o recrutador
 select throws_ok(
@@ -133,26 +133,26 @@ select throws_ok(
   $$delete from public.token_ledger$$,
   '42501', NULL, 'recrutador nao apaga do ledger');
 
--- 15) Zera o saldo (como superusuario)
+-- 15) Zera o saldo (como superusuario; linha 'stage_move_debit' = historico da regra antiga)
 reset role;
 insert into public.token_ledger (recruiter_id, amount, kind)
-values ('d1000000-0000-0000-0000-000000000001', -20, 'stage_move_debit');
+values ('d1000000-0000-0000-0000-000000000001', -21, 'stage_move_debit');
 select is(
   (select sum(amount)::int from public.token_ledger where recruiter_id = 'd1000000-0000-0000-0000-000000000001'),
   0, 'saldo do R1 zerado');
 
--- 16-18) Paywall com saldo zero
+-- 16-18) Saldo zero nunca trava o trabalho manual
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "d1000000-0000-0000-0000-000000000001"}';
 
-select throws_ok(
+select lives_ok(
   $$update public.applications set current_stage = 'screening'
     where id = 'e3000000-0000-0000-0000-000000000003'$$,
-  'P0001', 'insufficient_tokens', 'mover com saldo zero falha com insufficient_tokens');
+  'mover etapa com saldo zero continua permitido');
 
 select is(
   (select current_stage::text from public.applications where id = 'e3000000-0000-0000-0000-000000000003'),
-  'new_application', 'etapa nao mudou apos o bloqueio');
+  'screening', 'etapa mudou mesmo com saldo zero');
 
 select lives_ok(
   $$update public.applications set current_stage = 'rejected'
@@ -177,6 +177,10 @@ set local request.jwt.claims = '{"sub": "d4000000-0000-0000-0000-000000000004"}'
 select is(
   (select count(*)::int from public.token_ledger),
   0, 'candidato nao ve linhas do ledger');
+
+-- 22) O gatilho de debito foi removido
+select hasnt_trigger('public', 'applications', 'applications_charge_tokens',
+  'gatilho de debito ao mover etapa nao existe mais');
 
 select * from finish();
 rollback;
