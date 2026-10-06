@@ -14,6 +14,7 @@ import { JobCreate } from '@/screens/JobCreate';
 import { Pipeline } from '@/screens/Pipeline';
 import { PostHire } from '@/screens/PostHire';
 import { Tokens } from '@/screens/Tokens';
+import { Company } from './screens/Company';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import type { Role, Job } from '@/lib/types';
@@ -223,6 +224,7 @@ function App() {
           {screen === 'pipeline' && <Pipeline />}
           {screen === 'post-hire' && <PostHire onBack={() => setScreen('jobs')} />}
           {screen === 'tokens' && <Tokens />}
+          {screen === 'company' && <Company />}
         </motion.div>
       </AnimatePresence>
     </Layout>
