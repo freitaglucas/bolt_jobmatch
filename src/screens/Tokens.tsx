@@ -9,7 +9,6 @@ import {
   FEEDBACK_REWARD,
   INITIAL_TOKENS,
   SLA_HOURS,
-  STAGE_MOVE_COST,
   formatLedgerDate,
   mapLedgerRow,
   summarizeMonth,
@@ -17,9 +16,9 @@ import {
 
 const RULES = [
   `${INITIAL_TOKENS} tokens de boas-vindas quando o seu perfil é aprovado.`,
-  `Avançar um candidato de etapa custa ${STAGE_MOVE_COST} token.`,
+  'Mover etapa, rejeitar e dar retorno manual são gratuitos e nunca travam por saldo.',
+  'Tokens vão pagar automações de contato com candidatos, como o retorno em lote por e-mail (em breve).',
   `Enviar feedback em até ${SLA_HOURS / 24} dias após a última mudança de etapa devolve ${FEEDBACK_REWARD} token (1 por candidatura e etapa).`,
-  'Rejeitar um candidato é sempre gratuito.',
 ];
 
 export function Tokens() {
@@ -37,7 +36,7 @@ export function Tokens() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Jornada do Recrutamento</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tokens incentivam feedback rápido e respeitoso para quem se candidata
+          Tokens pagam automações de contato e premiam o retorno rápido a quem se candidata
         </p>
       </div>
 

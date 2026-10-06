@@ -1,9 +1,6 @@
 export const SLA_HOURS = 120;
 export const INITIAL_TOKENS = 20;
-export const STAGE_MOVE_COST = 1;
 export const FEEDBACK_REWARD = 1;
-
-export const INSUFFICIENT_TOKENS_MESSAGE = `Seu saldo de tokens acabou. Envie feedback em até ${SLA_HOURS / 24} dias para ganhar tokens e continuar movendo candidatos. Rejeitar continua gratuito.`;
 
 export interface TokenLedgerRow {
   id: string;
@@ -24,7 +21,7 @@ export interface LedgerEntry {
 
 const LEDGER_TITLES: Record<string, string> = {
   initial_grant: 'Tokens de boas-vindas',
-  stage_move_debit: 'Candidato movido de etapa',
+  stage_move_debit: 'Movimentação de etapa (regra anterior)',
   feedback_credit: 'Feedback enviado no prazo',
 };
 
@@ -38,7 +35,8 @@ export function mapLedgerRow(row: TokenLedgerRow): LedgerEntry {
   };
 }
 
-// O banco levanta a excecao 'insufficient_tokens' quando o saldo e zero.
+// Reservado para as automacoes pagas (N15): o banco levantara 'insufficient_tokens'
+// quando a automacao exigir saldo. Mover etapa e rejeitar nunca bloqueiam por saldo.
 export function isInsufficientTokensError(error: unknown): boolean {
   if (typeof error !== 'object' || error === null) {
     return false;

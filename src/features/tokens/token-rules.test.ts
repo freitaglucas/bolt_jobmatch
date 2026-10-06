@@ -34,11 +34,11 @@ describe('mapLedgerRow', () => {
     expect(entry.title).toBe('Tokens de boas-vindas');
   });
 
-  it('mapeia o debito de etapa como gasto com valor absoluto', () => {
+  it('mantem o debito de etapa antigo no extrato como historico', () => {
     const entry = mapLedgerRow(row('stage_move_debit', -1));
     expect(entry.type).toBe('spend');
     expect(entry.amount).toBe(1);
-    expect(entry.title).toBe('Candidato movido de etapa');
+    expect(entry.title).toBe('Movimentação de etapa (regra anterior)');
   });
 
   it('mapeia o credito de feedback', () => {
