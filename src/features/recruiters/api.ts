@@ -21,7 +21,7 @@ export function getRecruiterGateState(
   profile: RecruiterOnboardingProfile,
 ): RecruiterGateState {
   if (profile.approvedAt !== null) {
-    return 'approved';
+    return profile.companyId === null ? 'company' : 'approved';
   }
   if (profile.companyId === null || profile.position.trim().length === 0) {
     return 'form';

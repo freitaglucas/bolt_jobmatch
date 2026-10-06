@@ -70,10 +70,18 @@ function makeProfile(
 }
 
 describe('getRecruiterGateState', () => {
-  it('returns approved when approved_at is set, even without a company', () => {
+  it('returns approved when approved_at is set and a company is linked', () => {
+    expect(
+      getRecruiterGateState(
+        makeProfile({ approvedAt: '2026-01-01T00:00:00Z', companyId: 'company-1' }),
+      ),
+    ).toBe('approved');
+  });
+
+  it('returns company when approved but without a company', () => {
     expect(
       getRecruiterGateState(makeProfile({ approvedAt: '2026-01-01T00:00:00Z' })),
-    ).toBe('approved');
+    ).toBe('company');
   });
 
   it('returns form when not approved and missing company', () => {
