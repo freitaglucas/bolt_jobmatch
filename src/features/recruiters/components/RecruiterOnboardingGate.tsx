@@ -52,7 +52,10 @@ export function RecruiterOnboardingGate({
     return <>{children}</>;
   }
 
-  const showForm = editing || (state === 'form' && submittedSummary === null);
+  // Aprovado sem empresa: mostra o formulario e, ao salvar, o app libera sozinho.
+  const needsCompany = state === 'company';
+  const showForm =
+    editing || needsCompany || (state === 'form' && submittedSummary === null);
   const summary = submittedSummary ?? profile;
 
   return (
@@ -65,6 +68,7 @@ export function RecruiterOnboardingGate({
           {showForm ? (
             <RecruiterOnboardingForm
               initialValues={summary}
+              needsCompany={needsCompany}
               isSubmitting={saveMutation.isPending}
               submitError={
                 saveMutation.error instanceof Error
@@ -74,6 +78,9 @@ export function RecruiterOnboardingGate({
               onSubmit={(input) =>
                 saveMutation.mutate(input, {
                   onSuccess: () => {
+                    if (needsCompany) {
+                      return;
+                    }
                     setSubmittedSummary({
                       companyId: profile.companyId,
                       companyName: input.companyName,
@@ -126,11 +133,13 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
 
 function RecruiterOnboardingForm({
   initialValues,
+  needsCompany,
   isSubmitting,
   submitError,
   onSubmit,
 }: {
   initialValues: RecruiterOnboardingProfile;
+  needsCompany: boolean;
   isSubmitting: boolean;
   submitError: string | null;
   onSubmit: (input: SaveRecruiterOnboardingInput) => void;
@@ -169,7 +178,16 @@ function RecruiterOnboardingForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Conte um pouco sobre você e sua empresa</CardTitle>
+        <CardTitle>
+          {needsCompany
+            ? 'Falta só a sua empresa'
+            : 'Conte um pouco sobre você e sua empresa'}
+        </CardTitle>
+        {needsCompany && (
+          <CardDescription>
+            Sua conta já está aprovada. Informe a empresa para publicar vagas.
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -224,7 +242,11 @@ function RecruiterOnboardingForm({
             disabled={isSubmitting}
             className="bg-gradient-purple-teal text-white border-0 hover:opacity-90 w-full"
           >
-            {isSubmitting ? 'Enviando...' : 'Enviar cadastro'}
+            {isSubmitting
+              ? 'Salvando...'
+              : needsCompany
+                ? 'Salvar empresa'
+                : 'Enviar cadastro'}
           </Button>
         </form>
       </CardContent>

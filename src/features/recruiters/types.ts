@@ -12,4 +12,5 @@ export interface SaveRecruiterOnboardingInput {
   phone: string;
 }
 
-export type RecruiterGateState = 'approved' | 'form' | 'pending';
+// 'company' = recrutador ja aprovado, mas sem empresa vinculada (ex.: aprovado via SQL).
+export type RecruiterGateState = 'approved' | 'company' | 'form' | 'pending';
