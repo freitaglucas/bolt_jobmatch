@@ -20,6 +20,7 @@ import type { Role, Job } from '@/lib/types';
 import { useAuth } from '@/features/auth/hooks';
 import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate';
 import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
+import { RecruiterOnboardingGate } from '@/features/recruiters/components/RecruiterOnboardingGate';
 import { createApplication } from '@/features/applications/api';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
 
@@ -233,7 +234,9 @@ function App() {
         {role === 'candidate' ? (
           <CandidateOnboardingGate>{appContent}</CandidateOnboardingGate>
         ) : (
-          appContent
+          <RecruiterOnboardingGate onLogout={handleLogout}>
+            {appContent}
+          </RecruiterOnboardingGate>
         )}
       </TcleConsentGate>
       <Toaster />
