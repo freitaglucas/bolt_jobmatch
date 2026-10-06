@@ -20,6 +20,7 @@ export function filterSkills(
   query: string,
   excludeIds: string[],
   limit: number,
+  category: string | null = null,
 ): SkillSearchResult {
   const normalizedQuery = normalizeText(query);
   const excluded = new Set(excludeIds);
@@ -27,6 +28,7 @@ export function filterSkills(
   const matches = skills.filter(
     (skill) =>
       !excluded.has(skill.id) &&
+      (category === null || skill.category === category) &&
       (normalizedQuery === '' || normalizeText(skill.name).includes(normalizedQuery)),
   );
 

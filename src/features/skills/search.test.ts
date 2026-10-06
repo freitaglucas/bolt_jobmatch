@@ -34,6 +34,16 @@ describe('filterSkills', () => {
     expect(result.total).toBe(2);
   });
 
+  it('filters by category when one is given', () => {
+    const result = filterSkills(SKILLS, '', [], 10, 'hard');
+    expect(result.items.map((skill) => skill.id)).toEqual(['3', '4']);
+    expect(result.total).toBe(2);
+  });
+
+  it('keeps every category when category is null', () => {
+    expect(filterSkills(SKILLS, '', [], 10, null).total).toBe(4);
+  });
+
   it('returns nothing when no skill matches', () => {
     const result = filterSkills(SKILLS, 'xyz', [], 10);
     expect(result.items).toEqual([]);
