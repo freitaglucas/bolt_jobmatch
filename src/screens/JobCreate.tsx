@@ -95,6 +95,8 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   // Step 1 fields
   const [selected, setSelected] = useState<SelectedSkill[]>([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<'hard' | 'soft' | null>(null);
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
   const onboarding = useRecruiterOnboarding();
   const companyName = onboarding.data?.companyName ?? null;
@@ -108,9 +110,10 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         catalog.data ?? [],
         search,
         selected.map((skill) => skill.skillId),
-        MAX_SUGGESTIONS,
+        showAllSkills ? Number.MAX_SAFE_INTEGER : MAX_SUGGESTIONS,
+        categoryFilter,
       ),
-    [catalog.data, search, selected],
+    [catalog.data, search, selected, showAllSkills, categoryFilter],
   );
 
   const addSkill = (skill: { id: string; name: string; category: string }) => {
@@ -414,6 +417,33 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                     {catalog.data && (
                       <>
                         <div className="flex flex-wrap gap-2 pt-1">
+                          {([
+                            { value: null, label: 'Todas' },
+                            { value: 'hard', label: 'Técnicas' },
+                            { value: 'soft', label: 'Comportamentais' },
+                          ] as const).map((option) => (
+                            <button
+                              key={option.label}
+                              type="button"
+                              aria-pressed={categoryFilter === option.value}
+                              onClick={() => setCategoryFilter(option.value)}
+                              className={cn(
+                                'px-3 py-1 rounded-full border text-xs transition-all',
+                                categoryFilter === option.value
+                                  ? 'border-primary bg-primary/10 text-primary'
+                                  : 'border-border text-muted-foreground hover:border-primary/30',
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div
+                          className={cn(
+                            'flex flex-wrap gap-2 pt-1',
+                            showAllSkills && 'max-h-72 overflow-y-auto pr-1',
+                          )}
+                        >
                           {suggestions.items.map((skill) => (
                             <button
                               key={skill.id}
@@ -435,10 +465,35 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             Nenhuma competência encontrada para essa busca.
                           </p>
                         )}
-                        {suggestions.total > suggestions.items.length && (
-                          <p className="text-xs text-muted-foreground">
-                            Mostrando {suggestions.items.length} de {suggestions.total}. Digite para refinar.
-                          </p>
+                        {!showAllSkills && suggestions.total > suggestions.items.length && (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-xs text-muted-foreground">
+                              Mostrando {suggestions.items.length} de {suggestions.total}. Digite para refinar.
+                            </p>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              type="button"
+                              onClick={() => setShowAllSkills(true)}
+                            >
+                              Ver lista completa ({suggestions.total})
+                            </Button>
+                          </div>
+                        )}
+                        {showAllSkills && (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-xs text-muted-foreground">
+                              Mostrando todas as {suggestions.total} competências.
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              onClick={() => setShowAllSkills(false)}
+                            >
+                              Mostrar menos
+                            </Button>
+                          </div>
                         )}
                       </>
                     )}
