@@ -41,6 +41,8 @@ describe('listRecruiterApplications', () => {
     expect(RECRUITER_APPLICATIONS_SELECT).toContain('profiles(full_name)');
     expect(RECRUITER_APPLICATIONS_SELECT).toContain('jobs(title)');
     expect(RECRUITER_APPLICATIONS_SELECT).toContain('current_stage');
+    expect(RECRUITER_APPLICATIONS_SELECT).toContain('last_stage_change_at');
+    expect(RECRUITER_APPLICATIONS_SELECT).toContain('feedback_sent_at');
   });
 
   it('returns an empty list when there is no data', async () => {

@@ -10,7 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Briefcase, Calendar, MapPin } from 'lucide-react';
+import { Briefcase, Calendar, Clock, MapPin } from 'lucide-react';
+import {
+  DEADLINE_TONE_CLASSES,
+  getStageDeadline,
+} from '../features/applications/stage-deadline';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApplicationStatus, PipelineCandidate } from '@/lib/types';
@@ -226,6 +230,26 @@ export function Pipeline() {
                               </div>
                             </div>
                           </div>
+
+                          {(() => {
+                            const deadline = getStageDeadline({
+                              stage: candidate.stage,
+                              lastStageChangeAt: candidate.lastStageChangeAt,
+                              respondedAt: candidate.feedbackSentAt,
+                              now: new Date(),
+                            });
+                            return deadline ? (
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 mt-3 px-2 py-0.5 rounded-full text-[10px] font-medium',
+                                  DEADLINE_TONE_CLASSES[deadline.tone],
+                                )}
+                              >
+                                <Clock className="h-3 w-3" />
+                                {deadline.label}
+                              </span>
+                            ) : null;
+                          })()}
 
                           {showJobTitle && candidate.jobTitle && (
                             <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">

@@ -15,6 +15,8 @@ function makeRow(overrides: Partial<RecruiterApplicationRow> = {}): RecruiterApp
     match_score: 72.5,
     created_at: '2026-10-01T15:30:00Z',
     silver_medalist: false,
+    last_stage_change_at: '2026-10-02T15:00:00Z',
+    feedback_sent_at: null,
     jobs: { title: 'Analista de Inovação' },
     candidate_profiles: {
       current_position: 'Analista de Projetos',

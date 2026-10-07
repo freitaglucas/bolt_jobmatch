@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   latestFeedback,
+  latestFeedbackSentAt,
   mapCandidateApplication,
   type CandidateApplicationRow,
 } from './candidate-applications';
@@ -14,6 +15,7 @@ function makeRow(
     current_stage: 'screening',
     match_score: 82,
     created_at: '2026-10-01T15:00:00Z',
+    last_stage_change_at: '2026-10-02T15:00:00Z',
     jobs: { title: 'Analista de Dados', companies: { name: 'Acme' } },
     feedbacks: [],
     application_stages: [
@@ -23,6 +25,19 @@ function makeRow(
     ...overrides,
   };
 }
+
+describe('latestFeedbackSentAt', () => {
+  it('returns the most recent sent date, ignoring drafts', () => {
+    expect(latestFeedbackSentAt(null)).toBeNull();
+    expect(
+      latestFeedbackSentAt([
+        { content: 'a', sent_to_candidate_at: '2026-10-02T10:00:00Z', created_at: '2026-10-02T10:00:00Z' },
+        { content: 'b', sent_to_candidate_at: '2026-10-04T10:00:00Z', created_at: '2026-10-04T10:00:00Z' },
+        { content: 'rascunho', sent_to_candidate_at: null, created_at: '2026-10-05T10:00:00Z' },
+      ]),
+    ).toBe('2026-10-04T10:00:00Z');
+  });
+});
 
 describe('latestFeedback', () => {
   it('returns null when nothing was sent to the candidate', () => {
