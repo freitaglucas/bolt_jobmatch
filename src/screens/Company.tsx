@@ -16,12 +16,14 @@ import {
   useSaveRecruiterOnboarding,
 } from '../features/recruiters/hooks';
 import { RecruiterOnboardingSchema } from '../features/recruiters/schemas';
+import { useSendTestEmail } from '../features/email/hooks';
 
 // "Minha empresa": o recrutador ve e edita o nome da empresa, o cargo e o telefone.
 // TODO(F4): com N18/N19 a empresa passa a ter admin e recrutadores convidados.
 export function Company() {
   const profileQuery = useRecruiterOnboarding();
   const saveMutation = useSaveRecruiterOnboarding();
+  const testEmail = useSendTestEmail();
   const { toast } = useToast();
 
   const [companyName, setCompanyName] = useState('');
@@ -158,6 +160,39 @@ export function Company() {
               {saveMutation.isPending ? 'Salvando...' : 'Salvar'}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* TODO(N15): remover quando o primeiro e-mail real (retorno em lote) existir. */}
+      <Card className="border-border mt-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Teste de e-mail</CardTitle>
+          <CardDescription>
+            Envia um e-mail de teste para o seu endereço de login, para conferir se o envio
+            de e-mails está funcionando.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {testEmail.isError && (
+            <p role="alert" className="text-sm text-destructive">
+              {testEmail.error instanceof Error
+                ? testEmail.error.message
+                : 'Não foi possível enviar o e-mail. Tente de novo.'}
+            </p>
+          )}
+          {testEmail.isSuccess && (
+            <p className="text-sm text-muted-foreground">
+              E-mail enviado. Confira a caixa de entrada (e o spam).
+            </p>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={testEmail.isPending}
+            onClick={() => testEmail.mutate()}
+          >
+            {testEmail.isPending ? 'Enviando...' : 'Enviar e-mail de teste'}
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -175,6 +175,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"email_log": {
+                  Row: {
+                    "created_at": string,"error": string | null,"id": string,"provider_id": string | null,"recruiter_id": string,"status": string,"template": string,"to_email": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"error"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id": string,"status": string,"template": string,"to_email": string
+                  }
+                  Update: {
+                    "created_at"?: string,"error"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id"?: string,"status"?: string,"template"?: string,"to_email"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "email_log_recruiter_id_fkey"
+      columns: ["recruiter_id"]
+isOneToOne: false
+      referencedRelation: "recruiter_profiles"
+      referencedColumns: ["user_id"]
+    }
+                  ]
                 },"event_log": {
                   Row: {
                     "created_at": string,"event_type": string,"id": string,"metadata": NonNullable<Json>,"session_id": string,"target_id": string,"target_type": string,"user_id": string
