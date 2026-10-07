@@ -10,6 +10,8 @@ export interface RecruiterApplicationRow {
   match_score: number;
   created_at: string;
   silver_medalist: boolean;
+  last_stage_change_at: string;
+  feedback_sent_at: string | null;
   jobs: { title: string } | null;
   candidate_profiles: {
     current_position: string | null;
@@ -83,6 +85,8 @@ export function mapRecruiterApplication(
     location: profile?.location ?? null,
     yearsOfExperience: profile?.years_of_experience ?? null,
     silverMedalist: row.silver_medalist,
+    lastStageChangeAt: row.last_stage_change_at,
+    feedbackSentAt: row.feedback_sent_at,
   };
 }
 

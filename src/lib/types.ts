@@ -158,6 +158,8 @@ export interface PipelineCandidate {
   location?: string | null;
   yearsOfExperience?: number | null;
   silverMedalist?: boolean;
+  lastStageChangeAt?: string; // base do prazo de retorno (SLA)
+  feedbackSentAt?: string | null; // ultimo retorno enviado ao candidato
 }
 
 export interface TokenEvent {

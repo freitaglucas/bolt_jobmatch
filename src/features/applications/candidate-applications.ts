@@ -14,6 +14,7 @@ export interface CandidateApplicationRow {
   current_stage: string;
   match_score: number;
   created_at: string;
+  last_stage_change_at: string;
   jobs: { title: string; companies: { name: string } | null } | null;
   feedbacks:
     | {
@@ -36,6 +37,9 @@ export interface CandidateApplication {
   appliedDate: string;
   timeline: CandidateTimelineStep[];
   feedback: ApplicationFeedback | null;
+  lastStageChangeAt: string;
+  // Data do ultimo feedback enviado ao candidato (base para saber se o prazo foi cumprido).
+  respondedAt: string | null;
 }
 
 // O feedback mais recente enviado ao candidato. A policy de leitura ja limita
@@ -63,6 +67,19 @@ export function latestFeedback(
   };
 }
 
+// Data (ISO) do feedback enviado mais recentemente, ou null se nao houve nenhum.
+export function latestFeedbackSentAt(
+  rows: CandidateApplicationRow['feedbacks'],
+): string | null {
+  const sentDates = (rows ?? []).flatMap((row) =>
+    row.sent_to_candidate_at ? [row.sent_to_candidate_at] : [],
+  );
+  if (sentDates.length === 0) {
+    return null;
+  }
+  return [...sentDates].sort((a, b) => b.localeCompare(a))[0] ?? null;
+}
+
 // Converte uma linha do banco para o formato da tela do candidato. A etapa
 // exibida vem de applications.current_stage (a mesma coluna que o recrutador
 // atualiza). Etapa que a tela nao mostra (ex.: withdrawn) devolve null.
@@ -84,5 +101,7 @@ export function mapCandidateApplication(
     appliedDate: new Date(row.created_at).toLocaleDateString('pt-BR'),
     timeline: buildCandidateTimeline(row.application_stages, stage),
     feedback: latestFeedback(row.feedbacks),
+    lastStageChangeAt: row.last_stage_change_at,
+    respondedAt: latestFeedbackSentAt(row.feedbacks),
   };
 }

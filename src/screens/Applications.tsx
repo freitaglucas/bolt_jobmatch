@@ -15,6 +15,10 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import type { CandidateApplication } from '../features/applications/candidate-applications';
+import {
+  candidateDeadlineText,
+  getStageDeadline,
+} from '../features/applications/stage-deadline';
 import { useCandidateApplications } from '../features/applications/hooks';
 import type { ApplicationStatus } from '../lib/types';
 import { cn } from '../lib/utils';
@@ -169,6 +173,29 @@ export function Applications({
                             Candidatado em {app.appliedDate}
                           </span>
                         </div>
+
+                        {(() => {
+                          const deadline = getStageDeadline({
+                            stage: app.stage,
+                            lastStageChangeAt: app.lastStageChangeAt,
+                            respondedAt: app.respondedAt,
+                            now: new Date(),
+                          });
+                          const text = candidateDeadlineText(deadline);
+                          return text ? (
+                            <p
+                              className={cn(
+                                'flex items-center gap-1.5 mt-3 text-xs',
+                                deadline?.tone === 'overdue'
+                                  ? 'text-jm-red'
+                                  : 'text-muted-foreground',
+                              )}
+                            >
+                              <Clock className="h-3 w-3 shrink-0" />
+                              {text}
+                            </p>
+                          ) : null;
+                        })()}
 
                         <Timeline application={app} />
                       </div>
