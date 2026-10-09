@@ -177,16 +177,22 @@ isOneToOne: false
                   ]
                 },"email_log": {
                   Row: {
-                    "created_at": string,"error": string | null,"id": string,"provider_id": string | null,"recruiter_id": string,"status": string,"template": string,"to_email": string
+                    "application_id": string | null,"created_at": string,"error": string | null,"feedback_kind": string | null,"id": string,"provider_id": string | null,"recruiter_id": string,"stage": Database["public"]['Enums']["application_status"] | null,"status": string,"template": string,"to_email": string
                   }
                   Insert: {
-                    "created_at"?: string,"error"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id": string,"status": string,"template": string,"to_email": string
+                    "application_id"?: string | null,"created_at"?: string,"error"?: string | null,"feedback_kind"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id": string,"stage"?: Database["public"]['Enums']["application_status"] | null,"status": string,"template": string,"to_email": string
                   }
                   Update: {
-                    "created_at"?: string,"error"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id"?: string,"status"?: string,"template"?: string,"to_email"?: string
+                    "application_id"?: string | null,"created_at"?: string,"error"?: string | null,"feedback_kind"?: string | null,"id"?: string,"provider_id"?: string | null,"recruiter_id"?: string,"stage"?: Database["public"]['Enums']["application_status"] | null,"status"?: string,"template"?: string,"to_email"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "email_log_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "email_log_recruiter_id_fkey"
       columns: ["recruiter_id"]
 isOneToOne: false

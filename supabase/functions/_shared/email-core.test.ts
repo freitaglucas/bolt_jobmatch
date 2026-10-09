@@ -14,6 +14,7 @@ import {
 describe('isTemplateName', () => {
   it('accepts only known templates', () => {
     expect(isTemplateName('test')).toBe(true);
+    expect(isTemplateName('batch_feedback')).toBe(true);
     expect(isTemplateName('other')).toBe(false);
     expect(isTemplateName(undefined)).toBe(false);
   });
@@ -54,6 +55,12 @@ describe('buildResendPayload', () => {
     const payload = buildResendPayload('Job Match <a@b.c>', 'x@y.z', renderTemplate('test'));
     expect(payload.to).toEqual(['x@y.z']);
     expect(payload.from).toBe('Job Match <a@b.c>');
+    expect(payload).not.toHaveProperty('reply_to');
+  });
+
+  it('adds reply_to only when given', () => {
+    const payload = buildResendPayload('a@b.c', 'x@y.z', renderTemplate('test'), 'rec@acme.com');
+    expect(payload.reply_to).toBe('rec@acme.com');
   });
 });
 

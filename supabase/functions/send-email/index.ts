@@ -1,8 +1,17 @@
-// Edge function send-email (N17): envia e-mail transacional pelo Resend.
-// Deploy: npx supabase functions deploy send-email --no-verify-jwt --use-api
+// Edge function send-email: envia e-mail transacional pelo Resend.
+//  - template "test" (N17): e-mail de teste ao proprio recrutador.
+//  - template "batch_feedback" (N15a): retorno em lote ao candidato (gratis, sem token).
+// Deploy: npx supabase functions deploy send-email --no-verify-jwt --use-api --project-ref <ref>
 // A verificacao do usuario e feita aqui dentro (auth.getUser), por isso o
 // gateway fica sem verify_jwt. Veja o README desta pasta.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import {
+  type BatchDeps,
+  type ApplicationInfo,
+  MAX_BATCH_EMAILS_PER_HOUR,
+  parseBatchItems,
+  processBatch,
+} from '../_shared/batch-feedback.ts';
 import {
   buildResendPayload,
   isRateLimited,
@@ -19,12 +28,17 @@ const CORS_HEADERS = {
 };
 
 const DEFAULT_FROM = 'Job Match <onboarding@resend.dev>';
+const PAUSE_BETWEEN_SENDS_MS = 250;
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
   });
+}
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -75,8 +89,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return reply(403, { error: 'not_approved' });
   }
 
-  // 3) Template permitido. Por enquanto so "test", enviado ao proprio recrutador.
-  let body: { template?: unknown } = {};
+  // 3) Template permitido.
+  let body: { template?: unknown; items?: unknown } = {};
   try {
     body = await req.json();
   } catch {
@@ -86,18 +100,164 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return reply(400, { error: 'unknown_template' });
   }
   const template = body.template;
+  const since = new Date(Date.now() - 3_600_000).toISOString();
 
+  // ---------- Retorno em lote ao candidato (N15a) ----------
+  if (template === 'batch_feedback') {
+    const parsed = parseBatchItems(body.items);
+    if (!parsed.ok) {
+      return reply(400, { error: parsed.error });
+    }
+
+    const { count: batchCount, error: batchCountError } = await admin
+      .from('email_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('recruiter_id', user.id)
+      .eq('template', 'batch_feedback')
+      .gte('created_at', since);
+    if (batchCountError) {
+      return reply(500, { error: 'lookup_failed' });
+    }
+
+    const deps: BatchDeps = {
+      async loadApplication(applicationId, recruiterId): Promise<ApplicationInfo | null> {
+        const { data, error } = await admin
+          .from('applications')
+          .select('id, current_stage, candidate_id, jobs!inner(title, recruiter_id, companies(name))')
+          .eq('id', applicationId)
+          .eq('jobs.recruiter_id', recruiterId)
+          .maybeSingle();
+        if (error) {
+          throw new Error(`lookup_failed: ${error.message}`);
+        }
+        if (!data) {
+          return null;
+        }
+        const job = one(data.jobs as unknown) as {
+          title?: string;
+          companies?: { name?: string } | { name?: string }[] | null;
+        } | null;
+        return {
+          id: data.id as string,
+          stage: data.current_stage as string,
+          candidateId: data.candidate_id as string,
+          jobTitle: job?.title ?? '',
+          companyName: one(job?.companies)?.name ?? null,
+        };
+      },
+
+      async getCandidateEmail(candidateId) {
+        const { data, error } = await admin.auth.admin.getUserById(candidateId);
+        if (error) {
+          return null;
+        }
+        return data.user?.email ?? null;
+      },
+
+      async claimLog(entry) {
+        const { data, error } = await admin
+          .from('email_log')
+          .insert({
+            recruiter_id: entry.recruiterId,
+            template: 'batch_feedback',
+            to_email: entry.toEmail,
+            status: 'pending',
+            application_id: entry.applicationId,
+            stage: entry.stage,
+            feedback_kind: entry.kind,
+          })
+          .select('id')
+          .single();
+        if (error) {
+          if (error.code === '23505') {
+            return 'duplicate';
+          }
+          throw new Error(`log_failed: ${error.message}`);
+        }
+        return { id: data.id as string };
+      },
+
+      async recordDecision({ applicationId, message, reasonCode }) {
+        // Nova tentativa depois de falha so no e-mail: nao duplica o retorno no app.
+        const { data: existing } = await admin
+          .from('feedbacks')
+          .select('id')
+          .eq('application_id', applicationId)
+          .eq('kind', 'decision')
+          .eq('content', message)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          return;
+        }
+        const sentAt = new Date().toISOString();
+        const { error } = await admin.from('feedbacks').insert({
+          application_id: applicationId,
+          author_id: user.id,
+          content: message,
+          kind: 'decision',
+          reason_code: reasonCode,
+          sent_to_candidate_at: sentAt,
+        });
+        if (error) {
+          throw new Error(error.message);
+        }
+        await admin.from('applications').update({ feedback_sent_at: sentAt }).eq('id', applicationId);
+      },
+
+      async recordUpdate({ applicationId, message, newDueAt }) {
+        // postpone_feedback usa auth.uid(): chamada com o token do recrutador, nao com a chave de servico.
+        const { error } = await userClient.rpc('postpone_feedback', {
+          _application_id: applicationId,
+          _new_due_at: newDueAt,
+          _message: message,
+        });
+        if (error) {
+          throw new Error(error.message);
+        }
+      },
+
+      send: (payload) => sendWithResend(fetch, resendKey, payload),
+
+      async finishLog(id, result) {
+        await admin
+          .from('email_log')
+          .update(
+            result.status === 'sent'
+              ? { status: 'sent', provider_id: result.providerId }
+              : { status: 'failed', error: result.error.slice(0, 500) },
+          )
+          .eq('id', id);
+      },
+
+      pause: () => new Promise((resolve) => setTimeout(resolve, PAUSE_BETWEEN_SENDS_MS)),
+    };
+
+    const summary = await processBatch(
+      deps,
+      {
+        recruiterId: user.id,
+        recruiterEmail: user.email ?? null,
+        from,
+        quota: Math.max(0, MAX_BATCH_EMAILS_PER_HOUR - (batchCount ?? 0)),
+      },
+      parsed.items,
+      parsed.rejected,
+    );
+    return reply(200, summary as unknown as Record<string, unknown>);
+  }
+
+  // ---------- E-mail de teste (N17), enviado ao proprio recrutador ----------
   const recipient = user.email;
   if (!isValidEmail(recipient)) {
     return reply(400, { error: 'invalid_recipient' });
   }
 
-  // 4) Limite por hora.
-  const since = new Date(Date.now() - 3_600_000).toISOString();
+  // 4) Limite por hora (so do teste).
   const { count, error: countError } = await admin
     .from('email_log')
     .select('id', { count: 'exact', head: true })
     .eq('recruiter_id', user.id)
+    .eq('template', 'test')
     .gte('created_at', since);
   if (countError) {
     return reply(500, { error: 'lookup_failed' });
@@ -107,7 +267,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // 5) Envia e registra.
-  const email = renderTemplate(template, {
+  const email = renderTemplate('test', {
     recipientName: typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : undefined,
   });
   const payload = buildResendPayload(from, recipient, email);
