@@ -17,7 +17,7 @@ import { Card, CardContent } from '../components/ui/card';
 import type { CandidateApplication } from '../features/applications/candidate-applications';
 import {
   candidateDeadlineText,
-  getStageDeadline,
+  getReturnDeadline,
 } from '../features/applications/stage-deadline';
 import { useCandidateApplications } from '../features/applications/hooks';
 import type { ApplicationStatus } from '../lib/types';
@@ -175,10 +175,10 @@ export function Applications({
                         </div>
 
                         {(() => {
-                          const deadline = getStageDeadline({
+                          const deadline = getReturnDeadline({
                             stage: app.stage,
-                            lastStageChangeAt: app.lastStageChangeAt,
-                            respondedAt: app.respondedAt,
+                            dueAt: app.returnDueAt,
+                            postponeCount: app.postponeCount,
                             now: new Date(),
                           });
                           const text = candidateDeadlineText(deadline);

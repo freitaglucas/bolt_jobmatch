@@ -1,5 +1,6 @@
 import type { ApplicationStatus, PipelineCandidate } from '../../lib/types';
 import type { Database } from '../../shared/types/database';
+import { pickOpenDeadline, type FeedbackDeadlineRow } from './stage-deadline';
 
 // Linha como vem do banco: candidaturas das vagas do recrutador, com dados do
 // candidato e da vaga embutidos (ver recruiter-applications.api.ts).
@@ -10,8 +11,7 @@ export interface RecruiterApplicationRow {
   match_score: number;
   created_at: string;
   silver_medalist: boolean;
-  last_stage_change_at: string;
-  feedback_sent_at: string | null;
+  feedback_deadlines: FeedbackDeadlineRow[] | null;
   jobs: { title: string } | null;
   candidate_profiles: {
     current_position: string | null;
@@ -70,6 +70,7 @@ export function mapRecruiterApplication(
   }
 
   const profile = row.candidate_profiles;
+  const openDeadline = pickOpenDeadline(row.feedback_deadlines);
 
   return {
     id: row.id,
@@ -85,8 +86,8 @@ export function mapRecruiterApplication(
     location: profile?.location ?? null,
     yearsOfExperience: profile?.years_of_experience ?? null,
     silverMedalist: row.silver_medalist,
-    lastStageChangeAt: row.last_stage_change_at,
-    feedbackSentAt: row.feedback_sent_at,
+    returnDueAt: openDeadline?.due_at ?? null,
+    postponeCount: openDeadline?.postpone_no ?? 0,
   };
 }
 

@@ -4,7 +4,7 @@ import type { RecruiterApplicationRow } from './recruiter-applications';
 import { stageToDbStatus } from './recruiter-applications';
 
 export const RECRUITER_APPLICATIONS_SELECT =
-  'id, job_id, current_stage, match_score, created_at, silver_medalist, last_stage_change_at, feedback_sent_at, jobs(title), candidate_profiles(current_position, seniority_general, location, years_of_experience, profiles(full_name))';
+  'id, job_id, current_stage, match_score, created_at, silver_medalist, feedback_deadlines(due_at, met_at, postpone_no), jobs(title), candidate_profiles(current_position, seniority_general, location, years_of_experience, profiles(full_name))';
 
 // As regras de acesso (RLS) ja limitam o resultado as candidaturas das vagas do
 // proprio recrutador aprovado, e liberam o perfil de quem se candidatou.

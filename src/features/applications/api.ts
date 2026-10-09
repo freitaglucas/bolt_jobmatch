@@ -61,7 +61,7 @@ export async function createApplication(
 }
 
 export const CANDIDATE_APPLICATIONS_SELECT =
-  'id, job_id, current_stage, match_score, created_at, last_stage_change_at, jobs(title, companies(name)), feedbacks(content, sent_to_candidate_at, created_at), application_stages(new_stage, created_at)';
+  'id, job_id, current_stage, match_score, created_at, feedback_deadlines(due_at, met_at, postpone_no), jobs(title, companies(name)), feedbacks(content, sent_to_candidate_at, created_at), application_stages(new_stage, created_at)';
 
 // "Minhas candidaturas". A policy de leitura de feedbacks nao exige
 // sent_to_candidate_at, entao filtramos para nao expor feedback ainda nao
