@@ -1,6 +1,6 @@
 // Logica pura do e-mail transacional (N17). Sem APIs do Deno: roda no vitest.
 
-export const TEMPLATE_NAMES = ['test'] as const;
+export const TEMPLATE_NAMES = ['test', 'batch_feedback'] as const;
 export type TemplateName = (typeof TEMPLATE_NAMES)[number];
 
 export interface RenderedEmail {
@@ -30,9 +30,10 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-// Cada template novo (N15, 6.5) entra aqui e em TEMPLATE_NAMES.
+// Templates simples, sem dados de candidato. O batch_feedback (N15a) e montado
+// em batch-feedback.ts. Cada template novo entra em TEMPLATE_NAMES.
 export function renderTemplate(
-  name: TemplateName,
+  name: 'test',
   vars: { recipientName?: string } = {},
 ): RenderedEmail {
   switch (name) {
@@ -53,14 +54,23 @@ export interface ResendPayload {
   subject: string;
   html: string;
   text: string;
+  reply_to?: string;
 }
 
 export function buildResendPayload(
   from: string,
   to: string,
   email: RenderedEmail,
+  replyTo?: string,
 ): ResendPayload {
-  return { from, to: [to], subject: email.subject, html: email.html, text: email.text };
+  return {
+    from,
+    to: [to],
+    subject: email.subject,
+    html: email.html,
+    text: email.text,
+    ...(replyTo ? { reply_to: replyTo } : {}),
+  };
 }
 
 export class EmailSendError extends Error {
@@ -111,7 +121,8 @@ export async function sendWithResend(
   return { id: record.id };
 }
 
-// Limite simples por recrutador: no maximo MAX_EMAILS_PER_HOUR envios por hora.
+// Limite do e-mail de teste por recrutador: no maximo MAX_EMAILS_PER_HOUR envios por hora.
+// O lote (batch_feedback) tem o proprio limite em batch-feedback.ts.
 export const MAX_EMAILS_PER_HOUR = 5;
 
 export function isRateLimited(sentInLastHour: number): boolean {

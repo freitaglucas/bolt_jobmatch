@@ -35,8 +35,8 @@ values
 -- 1) Status invalido e recusado
 select throws_ok(
   $$insert into public.email_log (recruiter_id, template, to_email, status)
-    values ('f1000000-0000-0000-0000-000000000001', 'test', 'a@b.c', 'pending')$$,
-  '23514', NULL, 'status fora de sent/failed e recusado');
+    values ('f1000000-0000-0000-0000-000000000001', 'test', 'a@b.c', 'bogus')$$,
+  '23514', NULL, 'status fora de pending/sent/failed e recusado');
 
 -- 2-3) R1 ve so as proprias linhas
 set local role authenticated;
