@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   latestFeedback,
-  latestFeedbackSentAt,
   mapCandidateApplication,
   type CandidateApplicationRow,
 } from './candidate-applications';
@@ -15,7 +14,9 @@ function makeRow(
     current_stage: 'screening',
     match_score: 82,
     created_at: '2026-10-01T15:00:00Z',
-    last_stage_change_at: '2026-10-02T15:00:00Z',
+    feedback_deadlines: [
+      { due_at: '2026-10-07T15:00:00Z', met_at: null, postpone_no: 0 },
+    ],
     jobs: { title: 'Analista de Dados', companies: { name: 'Acme' } },
     feedbacks: [],
     application_stages: [
@@ -25,19 +26,6 @@ function makeRow(
     ...overrides,
   };
 }
-
-describe('latestFeedbackSentAt', () => {
-  it('returns the most recent sent date, ignoring drafts', () => {
-    expect(latestFeedbackSentAt(null)).toBeNull();
-    expect(
-      latestFeedbackSentAt([
-        { content: 'a', sent_to_candidate_at: '2026-10-02T10:00:00Z', created_at: '2026-10-02T10:00:00Z' },
-        { content: 'b', sent_to_candidate_at: '2026-10-04T10:00:00Z', created_at: '2026-10-04T10:00:00Z' },
-        { content: 'rascunho', sent_to_candidate_at: null, created_at: '2026-10-05T10:00:00Z' },
-      ]),
-    ).toBe('2026-10-04T10:00:00Z');
-  });
-});
 
 describe('latestFeedback', () => {
   it('returns null when nothing was sent to the candidate', () => {
@@ -93,6 +81,33 @@ describe('mapCandidateApplication', () => {
     expect(
       mapCandidateApplication(makeRow({ current_stage: 'withdrawn' })),
     ).toBeNull();
+  });
+
+  it('exposes the open return deadline and its postponements', () => {
+    expect(mapCandidateApplication(makeRow())).toMatchObject({
+      returnDueAt: '2026-10-07T15:00:00Z',
+      postponeCount: 0,
+    });
+
+    const postponed = mapCandidateApplication(
+      makeRow({
+        feedback_deadlines: [
+          { due_at: '2026-10-07T15:00:00Z', met_at: '2026-10-06T10:00:00Z', postpone_no: 0 },
+          { due_at: '2026-10-12T15:00:00Z', met_at: null, postpone_no: 1 },
+        ],
+      }),
+    );
+    expect(postponed).toMatchObject({
+      returnDueAt: '2026-10-12T15:00:00Z',
+      postponeCount: 1,
+    });
+  });
+
+  it('has no return deadline when none is open', () => {
+    expect(mapCandidateApplication(makeRow({ feedback_deadlines: null }))).toMatchObject({
+      returnDueAt: null,
+      postponeCount: 0,
+    });
   });
 
   it('builds the timeline from the stage history', () => {

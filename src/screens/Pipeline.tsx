@@ -13,7 +13,7 @@ import {
 import { Briefcase, Calendar, Clock, MapPin } from 'lucide-react';
 import {
   DEADLINE_TONE_CLASSES,
-  getStageDeadline,
+  getReturnDeadline,
 } from '../features/applications/stage-deadline';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import { Textarea } from '@/components/ui/textarea';
@@ -232,10 +232,10 @@ export function Pipeline() {
                           </div>
 
                           {(() => {
-                            const deadline = getStageDeadline({
+                            const deadline = getReturnDeadline({
                               stage: candidate.stage,
-                              lastStageChangeAt: candidate.lastStageChangeAt,
-                              respondedAt: candidate.feedbackSentAt,
+                              dueAt: candidate.returnDueAt,
+                              postponeCount: candidate.postponeCount,
                               now: new Date(),
                             });
                             return deadline ? (
@@ -246,7 +246,7 @@ export function Pipeline() {
                                 )}
                               >
                                 <Clock className="h-3 w-3" />
-                                {deadline.label}
+                                {deadline.label} · até {deadline.dueDateText}
                               </span>
                             ) : null;
                           })()}

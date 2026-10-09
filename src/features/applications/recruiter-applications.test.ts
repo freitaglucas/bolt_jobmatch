@@ -15,8 +15,10 @@ function makeRow(overrides: Partial<RecruiterApplicationRow> = {}): RecruiterApp
     match_score: 72.5,
     created_at: '2026-10-01T15:30:00Z',
     silver_medalist: false,
-    last_stage_change_at: '2026-10-02T15:00:00Z',
-    feedback_sent_at: null,
+    feedback_deadlines: [
+      { due_at: '2026-10-01T15:00:00Z', met_at: '2026-10-02T15:00:00Z', postpone_no: 0 },
+      { due_at: '2026-10-07T15:00:00Z', met_at: null, postpone_no: 1 },
+    ],
     jobs: { title: 'Analista de Inovação' },
     candidate_profiles: {
       current_position: 'Analista de Projetos',
@@ -96,6 +98,16 @@ describe('mapRecruiterApplication', () => {
 
   it('returns null when the candidate withdrew', () => {
     expect(mapRecruiterApplication(makeRow({ current_stage: 'withdrawn' }))).toBeNull();
+  });
+
+  it('uses the open return deadline, not the ones already met', () => {
+    expect(mapRecruiterApplication(makeRow())).toMatchObject({
+      returnDueAt: '2026-10-07T15:00:00Z',
+      postponeCount: 1,
+    });
+    expect(
+      mapRecruiterApplication(makeRow({ feedback_deadlines: [] })),
+    ).toMatchObject({ returnDueAt: null, postponeCount: 0 });
   });
 
   it('keeps the talent-pool flag', () => {

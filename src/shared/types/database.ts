@@ -213,15 +213,34 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"feedbacks": {
+                },"feedback_deadlines": {
                   Row: {
-                    "application_id": string,"author_id": string,"content": string,"created_at": string,"id": string,"sent_to_candidate_at": string | null
+                    "application_id": string,"created_at": string,"due_at": string,"id": string,"met_at": string | null,"postpone_no": number,"stage": Database["public"]['Enums']["application_status"]
                   }
                   Insert: {
-                    "application_id": string,"author_id": string,"content": string,"created_at"?: string,"id"?: string,"sent_to_candidate_at"?: string | null
+                    "application_id": string,"created_at"?: string,"due_at": string,"id"?: string,"met_at"?: string | null,"postpone_no"?: number,"stage": Database["public"]['Enums']["application_status"]
                   }
                   Update: {
-                    "application_id"?: string,"author_id"?: string,"content"?: string,"created_at"?: string,"id"?: string,"sent_to_candidate_at"?: string | null
+                    "application_id"?: string,"created_at"?: string,"due_at"?: string,"id"?: string,"met_at"?: string | null,"postpone_no"?: number,"stage"?: Database["public"]['Enums']["application_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "feedback_deadlines_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"feedbacks": {
+                  Row: {
+                    "application_id": string,"author_id": string,"content": string,"created_at": string,"id": string,"kind": string,"reason_code": string | null,"sent_to_candidate_at": string | null
+                  }
+                  Insert: {
+                    "application_id": string,"author_id": string,"content": string,"created_at"?: string,"id"?: string,"kind"?: string,"reason_code"?: string | null,"sent_to_candidate_at"?: string | null
+                  }
+                  Update: {
+                    "application_id"?: string,"author_id"?: string,"content"?: string,"created_at"?: string,"id"?: string,"kind"?: string,"reason_code"?: string | null,"sent_to_candidate_at"?: string | null
                   }
                   Relationships: [
                     {
@@ -389,6 +408,18 @@ isOneToOne: false
                            },
 "can_recruiter_view_candidate":
 { Args: { "_candidate_id": string }; Returns: boolean
+                           },
+"is_feedback_deadline_stage":
+{ Args: { "_stage": Database["public"]['Enums']["application_status"] }; Returns: boolean
+                           },
+"max_feedback_postpone_days":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"max_feedback_postpones":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"postpone_feedback":
+{ Args: { "_application_id": string,"_message": string,"_new_due_at": string }; Returns: string
                            },
 "feedback_sla":
 { Args: Record<PropertyKey, never>; Returns: string
