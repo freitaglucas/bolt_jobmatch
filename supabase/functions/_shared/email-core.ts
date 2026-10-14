@@ -1,6 +1,6 @@
 // Logica pura do e-mail transacional (N17). Sem APIs do Deno: roda no vitest.
 
-export const TEMPLATE_NAMES = ['test', 'batch_feedback'] as const;
+export const TEMPLATE_NAMES = ['test', 'batch_feedback', 'stage_update'] as const;
 export type TemplateName = (typeof TEMPLATE_NAMES)[number];
 
 export interface RenderedEmail {

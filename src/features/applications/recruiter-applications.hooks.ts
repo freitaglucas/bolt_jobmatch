@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApplicationStatus } from '../../lib/types';
+import { sendStageUpdate } from '../email/stage-update.api';
 import { CANDIDATE_APPLICATIONS_QUERY_KEY } from './hooks';
 import {
   listRecruiterApplications,
@@ -7,6 +8,7 @@ import {
   sendApplicationFeedback,
   type SendFeedbackInput,
 } from './recruiter-applications.api';
+import { shouldNotifyStageChange } from './stage-notice';
 
 export const RECRUITER_APPLICATIONS_QUERY_KEY = ['applications', 'recruiter'] as const;
 
@@ -29,14 +31,20 @@ export function useMoveApplicationStage() {
     }: {
       applicationId: string;
       stage: ApplicationStatus;
+      // Etapa de origem: quando e a anterior no funil, o candidato recebe o aviso (N71).
+      fromStage?: ApplicationStatus;
     }) => moveApplicationStage(applicationId, stage),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: RECRUITER_APPLICATIONS_QUERY_KEY,
       });
       void queryClient.invalidateQueries({
         queryKey: CANDIDATE_APPLICATIONS_QUERY_KEY,
       });
+      if (shouldNotifyStageChange(variables.fromStage, variables.stage)) {
+        // Aviso automatico por e-mail. Falha aqui nao desfaz a mudanca de etapa.
+        void sendStageUpdate(variables.applicationId).catch(() => undefined);
+      }
     },
   });
 }
