@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { Screen } from '@/components/Layout';
@@ -12,6 +12,8 @@ import {
 } from '@/features/jobs/recruiter-jobs.hooks';
 import { isForeignKeyViolation, mapRecruiterJob } from '@/features/jobs/recruiter-jobs';
 import { JobsManagement } from '@/screens/JobsManagement';
+import { focusPipelineOnJob } from '@/features/applications/pipeline-focus';
+import { CloseJobDialog } from '@/features/jobs/components/CloseJobDialog';
 
 interface RecruiterJobsProps {
   onNewJob: () => void;
@@ -25,6 +27,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   const applicationsQuery = useRecruiterApplications();
   const setStatus = useSetJobStatus();
   const removeJob = useDeleteJob();
+  const [closingJobId, setClosingJobId] = useState<string | null>(null);
 
   const companyName = onboarding.data?.companyName ?? '';
 
@@ -56,6 +59,8 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
       },
     );
   };
+
+  const closingJob = jobs.find((item) => item.id === closingJobId) ?? null;
 
   const handleDelete = (jobId: string) => {
     if (!window.confirm('Excluir esta vaga? Essa ação não pode ser desfeita.')) return;
@@ -103,13 +108,29 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   }
 
   return (
-    <JobsManagement
-      jobs={jobs}
-      jobCandidates={candidatesByJob}
-      onNewJob={onNewJob}
-      onNavigate={onNavigate}
-      onToggleJobStatus={handleToggleStatus}
-      onDeleteJob={handleDelete}
-    />
+    <>
+      <JobsManagement
+        jobs={jobs}
+        jobCandidates={candidatesByJob}
+        onNewJob={onNewJob}
+        onNavigate={onNavigate}
+        onToggleJobStatus={handleToggleStatus}
+        onDeleteJob={handleDelete}
+        onCloseJob={setClosingJobId}
+      />
+      {closingJob && (
+        <CloseJobDialog
+          job={closingJob}
+          candidates={candidatesByJob[closingJob.id] ?? []}
+          onCancel={() => setClosingJobId(null)}
+          onFinished={() => setClosingJobId(null)}
+          onOpenPipeline={() => {
+            focusPipelineOnJob(closingJob.id);
+            setClosingJobId(null);
+            onNavigate('pipeline');
+          }}
+        />
+      )}
+    </>
   );
 }
