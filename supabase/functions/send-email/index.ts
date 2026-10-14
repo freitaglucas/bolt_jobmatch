@@ -1,6 +1,7 @@
 // Edge function send-email: envia e-mail transacional pelo Resend.
 //  - template "test" (N17): e-mail de teste ao proprio recrutador.
 //  - template "batch_feedback" (N15a): retorno em lote ao candidato (gratis, sem token).
+//  - template "stage_update" (N71): aviso automatico de mudanca de etapa (gratis, sem texto livre).
 // Deploy: npx supabase functions deploy send-email --no-verify-jwt --use-api --project-ref <ref>
 // A verificacao do usuario e feita aqui dentro (auth.getUser), por isso o
 // gateway fica sem verify_jwt. Veja o README desta pasta.
@@ -12,6 +13,13 @@ import {
   parseBatchItems,
   processBatch,
 } from '../_shared/batch-feedback.ts';
+import {
+  type StageUpdateApplication,
+  type StageUpdateDeps,
+  MAX_STAGE_UPDATES_PER_HOUR,
+  parseStageUpdateRequest,
+  processStageUpdate,
+} from '../_shared/stage-update.ts';
 import {
   buildResendPayload,
   isRateLimited,
@@ -90,7 +98,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
 
   // 3) Template permitido.
-  let body: { template?: unknown; items?: unknown } = {};
+  let body: { template?: unknown; items?: unknown; application_id?: unknown } = {};
   try {
     body = await req.json();
   } catch {
@@ -244,6 +252,121 @@ Deno.serve(async (req: Request): Promise<Response> => {
       parsed.rejected,
     );
     return reply(200, summary as unknown as Record<string, unknown>);
+  }
+
+  // ---------- Aviso de mudanca de etapa (N71): gratis, sem texto livre ----------
+  if (template === 'stage_update') {
+    const applicationId = parseStageUpdateRequest(body.application_id);
+    if (!applicationId) {
+      return reply(400, { error: 'invalid_item' });
+    }
+
+    const { count: noticeCount, error: noticeCountError } = await admin
+      .from('email_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('recruiter_id', user.id)
+      .eq('template', 'stage_update')
+      .gte('created_at', since);
+    if (noticeCountError) {
+      return reply(500, { error: 'lookup_failed' });
+    }
+    if ((noticeCount ?? 0) >= MAX_STAGE_UPDATES_PER_HOUR) {
+      return reply(429, { error: 'rate_limited' });
+    }
+
+    const noticeDeps: StageUpdateDeps = {
+      async loadApplication(id, recruiterId): Promise<StageUpdateApplication | null> {
+        const { data, error } = await admin
+          .from('applications')
+          .select(
+            'id, current_stage, candidate_id, jobs!inner(title, recruiter_id, companies(name)), candidate_profiles(profiles(full_name))',
+          )
+          .eq('id', id)
+          .eq('jobs.recruiter_id', recruiterId)
+          .maybeSingle();
+        if (error) {
+          throw new Error(`lookup_failed: ${error.message}`);
+        }
+        if (!data) {
+          return null;
+        }
+        const job = one(data.jobs as unknown) as {
+          title?: string;
+          companies?: { name?: string } | { name?: string }[] | null;
+        } | null;
+        const candidate = one(data.candidate_profiles as unknown) as {
+          profiles?: { full_name?: string } | { full_name?: string }[] | null;
+        } | null;
+        return {
+          id: data.id as string,
+          stage: data.current_stage as string,
+          candidateId: data.candidate_id as string,
+          candidateName: one(candidate?.profiles)?.full_name ?? null,
+          jobTitle: job?.title ?? '',
+          companyName: one(job?.companies)?.name ?? null,
+        };
+      },
+
+      async loadOpenDueAt(id) {
+        const { data } = await admin
+          .from('feedback_deadlines')
+          .select('due_at')
+          .eq('application_id', id)
+          .is('met_at', null)
+          .maybeSingle();
+        return (data?.due_at as string | undefined) ?? null;
+      },
+
+      async getCandidateEmail(candidateId) {
+        const { data, error } = await admin.auth.admin.getUserById(candidateId);
+        if (error) {
+          return null;
+        }
+        return data.user?.email ?? null;
+      },
+
+      async claimLog(entry) {
+        const { data, error } = await admin
+          .from('email_log')
+          .insert({
+            recruiter_id: entry.recruiterId,
+            template: 'stage_update',
+            to_email: entry.toEmail,
+            status: 'pending',
+            application_id: entry.applicationId,
+            stage: entry.stage,
+          })
+          .select('id')
+          .single();
+        if (error) {
+          if (error.code === '23505') {
+            return 'duplicate';
+          }
+          throw new Error(`log_failed: ${error.message}`);
+        }
+        return { id: data.id as string };
+      },
+
+      send: (payload) => sendWithResend(fetch, resendKey, payload),
+
+      async finishLog(id, result) {
+        await admin
+          .from('email_log')
+          .update(
+            result.status === 'sent'
+              ? { status: 'sent', provider_id: result.providerId }
+              : { status: 'failed', error: result.error.slice(0, 500) },
+          )
+          .eq('id', id);
+      },
+    };
+
+    const notice = await processStageUpdate(
+      noticeDeps,
+      { recruiterId: user.id, recruiterEmail: user.email ?? null, from },
+      applicationId,
+    );
+    return reply(200, notice as unknown as Record<string, unknown>);
   }
 
   // ---------- E-mail de teste (N17), enviado ao proprio recrutador ----------

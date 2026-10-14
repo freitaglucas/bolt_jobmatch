@@ -18,7 +18,17 @@ Envia e-mail transacional pelo Resend. Templates:
   recrutador. A mesma decisao nao e enviada duas vezes por e-mail na mesma
   candidatura e etapa. Limite proprio: 300 envios por hora por recrutador.
 
-Os templates de aviso a equipe (6.5) e de mudanca de etapa (N71) entram depois.
+- `stage_update` (N71): aviso automatico de mudanca de etapa ao candidato, gratis e
+  sem texto livre. Corpo: `{ "template": "stage_update", "application_id": "<uuid>" }`.
+  A funcao confere que a candidatura e de vaga do recrutador e que a etapa atual e
+  Triagem, Entrevista ou Final, monta "Voce avancou para a etapa X da vaga Y. Proximo
+  retorno ate Z." (Z = prazo de retorno aberto) e envia como "<Empresa> via Job Match"
+  com Reply-To do recrutador. Resposta: `{ status, error? }` com status `sent`,
+  `failed`, `skipped_duplicate` ou `skipped`. O mesmo aviso nao sai duas vezes na
+  mesma candidatura e etapa. Limite proprio: 300 por hora por recrutador. A tela chama
+  so depois de mudar a etapa; falha no e-mail nao desfaz a mudanca.
+
+O template de aviso a equipe (6.5) entra depois.
 
 ## Segredos (Supabase, Edge Functions > Secrets)
 - `RESEND_API_KEY`: chave do Resend (permissao "Sending access").

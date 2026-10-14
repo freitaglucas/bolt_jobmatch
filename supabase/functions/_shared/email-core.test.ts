@@ -15,6 +15,7 @@ describe('isTemplateName', () => {
   it('accepts only known templates', () => {
     expect(isTemplateName('test')).toBe(true);
     expect(isTemplateName('batch_feedback')).toBe(true);
+    expect(isTemplateName('stage_update')).toBe(true);
     expect(isTemplateName('other')).toBe(false);
     expect(isTemplateName(undefined)).toBe(false);
   });

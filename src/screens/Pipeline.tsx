@@ -424,6 +424,7 @@ function CandidateModal({
   if (!candidate) return null;
 
   const candidateId = candidate.id;
+  const candidateStage = candidate.stage;
   const nextStage = getNextStage(candidate.stage);
   const isPending = moveStage.isPending || sendFeedback.isPending;
 
@@ -439,7 +440,7 @@ function CandidateModal({
 
     const advance = () =>
       moveStage.mutate(
-        { applicationId: candidateId, stage: targetStage },
+        { applicationId: candidateId, stage: targetStage, fromStage: candidateStage },
         {
           onSuccess: () => onClose(),
           onError: () =>
