@@ -1,15 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { getTokenBalance, listTokenLedger } from './api';
+import { listTokenLedger } from './api';
 
 export const TOKENS_QUERY_KEY = ['tokens'] as const;
-
-export function useTokenBalance() {
-  return useQuery({
-    queryKey: [...TOKENS_QUERY_KEY, 'balance'],
-    queryFn: getTokenBalance,
-    staleTime: 30_000,
-  });
-}
 
 export function useTokenLedger() {
   return useQuery({
@@ -18,4 +10,3 @@ export function useTokenLedger() {
     staleTime: 30_000,
   });
 }
-
