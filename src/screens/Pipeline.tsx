@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Briefcase, Calendar, Clock, MapPin } from 'lucide-react';
+import { Briefcase, Calendar, Check, Clock, MapPin } from 'lucide-react';
+import { BatchFeedbackDialog } from '../features/applications/components/BatchFeedbackDialog';
 import {
   DEADLINE_TONE_CLASSES,
   getReturnDeadline,
@@ -75,6 +76,43 @@ export function Pipeline() {
   );
   const [selectedCandidate, setSelectedCandidate] =
     useState<PipelineCandidate | null>(null);
+  // Modo "retorno em lote": os cards viram selecionaveis.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [batchOpen, setBatchOpen] = useState(false);
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleColumn(columnCandidates: PipelineCandidate[]) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      const allSelected = columnCandidates.every((candidate) => next.has(candidate.id));
+      for (const candidate of columnCandidates) {
+        if (allSelected) {
+          next.delete(candidate.id);
+        } else {
+          next.add(candidate.id);
+        }
+      }
+      return next;
+    });
+  }
+
+  function exitSelectionMode() {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBatchOpen(false);
+  }
 
   useEffect(() => {
     return () => {
@@ -147,6 +185,15 @@ export function Pipeline() {
           </p>
         </div>
         <div className="flex flex-col gap-1 sm:items-end">
+          <Button
+            variant={selectionMode ? 'secondary' : 'outline'}
+            size="sm"
+            className="mb-1"
+            aria-pressed={selectionMode}
+            onClick={() => (selectionMode ? exitSelectionMode() : setSelectionMode(true))}
+          >
+            {selectionMode ? 'Cancelar retorno em lote' : 'Dar retorno em lote'}
+          </Button>
           <select
             aria-label="Filtrar por vaga"
             value={activeJobId}
@@ -184,9 +231,22 @@ export function Pipeline() {
                   <div className={cn('w-2.5 h-2.5 rounded-full', column.color)} />
                   <span className="font-semibold text-sm">{column.stage}</span>
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {column.candidates.length}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {selectionMode && column.candidates.length > 0 && (
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => toggleColumn(column.candidates)}
+                    >
+                      {column.candidates.every((candidate) => selectedIds.has(candidate.id))
+                        ? 'Limpar'
+                        : 'Selecionar todos'}
+                    </button>
+                  )}
+                  <Badge variant="secondary" className="text-xs">
+                    {column.candidates.length}
+                  </Badge>
+                </div>
               </div>
 
               <div className="space-y-3 min-h-[200px]">
@@ -199,10 +259,22 @@ export function Pipeline() {
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedCandidate(candidate)}
+                      onClick={() =>
+                        selectionMode
+                          ? toggleSelected(candidate.id)
+                          : setSelectedCandidate(candidate)
+                      }
+                      aria-pressed={selectionMode ? selectedIds.has(candidate.id) : undefined}
                       className="w-full text-left"
                     >
-                      <Card className="border-border hover:border-primary/30 transition-all">
+                      <Card
+                        className={cn(
+                          'border-border hover:border-primary/30 transition-all',
+                          selectionMode &&
+                            selectedIds.has(candidate.id) &&
+                            'border-primary ring-2 ring-primary/40',
+                        )}
+                      >
                         <div className="p-4">
                           <div className="flex items-start gap-3">
                             <div
@@ -214,7 +286,22 @@ export function Pipeline() {
                               {initials(candidate.name)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-sm truncate">
+                              <h4 className="font-medium text-sm truncate flex items-center gap-1.5">
+                                {selectionMode && (
+                                  <span
+                                    className={cn(
+                                      'h-4 w-4 shrink-0 rounded border flex items-center justify-center',
+                                      selectedIds.has(candidate.id)
+                                        ? 'bg-primary border-primary text-primary-foreground'
+                                        : 'border-border',
+                                    )}
+                                    aria-hidden="true"
+                                  >
+                                    {selectedIds.has(candidate.id) && (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                  </span>
+                                )}
                                 {candidate.name}
                               </h4>
                               <p className="text-xs text-muted-foreground truncate">
@@ -284,6 +371,27 @@ export function Pipeline() {
           ))}
         </div>
       </div>
+
+      {selectionMode && (
+        <div className="sticky bottom-4 mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-lg">
+          <span className="text-sm" aria-live="polite">
+            {selectedIds.size === 1
+              ? '1 candidato selecionado'
+              : `${selectedIds.size} candidatos selecionados`}
+          </span>
+          <Button disabled={selectedIds.size === 0} onClick={() => setBatchOpen(true)}>
+            Dar retorno ({selectedIds.size})
+          </Button>
+        </div>
+      )}
+
+      {batchOpen && (
+        <BatchFeedbackDialog
+          candidates={candidates.filter((candidate) => selectedIds.has(candidate.id))}
+          onClose={() => setBatchOpen(false)}
+          onDone={exitSelectionMode}
+        />
+      )}
 
       <CandidateModal
         candidate={selectedCandidate}
