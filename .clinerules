@@ -1,23 +1,24 @@
-# Regras do agente no Job Match (valem para TODA tarefa)
+# Regras do Cline — Job Match
 
-## Orçamento e anti-loop
-- Siga só os passos do prompt. Não explore o projeto além dos arquivos citados no prompt.
-- Se precisar localizar algo que o prompt não indicou, faça no máximo 3 buscas na tarefa inteira.
-- Não releia um arquivo que você já leu nesta tarefa.
-- Se o mesmo comando falhar 2 vezes, ou o mesmo erro aparecer 2 vezes, PARE e escreva o relatório com o erro.
-- Se lint, typecheck ou test continuarem falhando depois de 3 rodadas de correção, PARE e relate.
-- Nunca faça perguntas ao usuário: escolha a opção mais simples e registre a escolha no relatório.
-- Ao terminar, escreva o relatório curto pedido no prompt e PARE.
+## Idioma
+- Responda sempre em português.
 
-## Ambiente (Windows + PowerShell, sem Docker)
-- Linhas com "pwsh.exe" e "exit code 1" depois de comandos git são ruído do terminal: se a saída esperada apareceu, ignore e siga.
-- Proibido rodar: supabase, npx supabase, docker, npm run test:db, git push, gh, git reset --hard, git clean.
-- Push, PR e merge são feitos só pelo usuário.
+## Stack
+- Vite + React 18 + TypeScript + Tailwind + shadcn/ui (Radix).
+- Supabase (supabase-js, migrations em supabase/migrations, edge functions em supabase/functions).
+- Testes: Vitest (npm test) e pgTAP (npm run test:db).
 
-## Arquivos que nunca devem ser editados
-- .env*, migrações já existentes em supabase/migrations/, supabase/seeds/**, supabase/scripts/**, src/components/ui/**, src/shared/ui/**, .clinerules
-- Migração nova só quando o prompt pedir, em UM arquivo novo.
+## Controle de custo (OBRIGATÓRIO)
+- Leia SOMENTE os arquivos citados no prompt. Não explore o projeto, não liste pastas inteiras, não abra arquivos "para entender o contexto".
+- Quando o prompt trouxer código pronto, apenas grave os arquivos exatamente como enviados. Não reescreva nem "melhore".
+- Rode cada checagem (npm run lint, npm run typecheck, npm test) no máximo UMA vez ao final.
+- Se uma checagem falhar, tente corrigir no máximo 2 vezes. Na terceira falha, PARE e me mostre o erro completo e os arquivos envolvidos.
+- Nunca entre em ciclo de editar → rodar → editar no mesmo erro.
+- Não rode npm install / npm ci sem eu pedir.
 
-## Commits
-- Use git add com os caminhos explícitos dos arquivos (nunca git add . nem git add -A).
-- Use git commit -m "mensagem" (nunca abra o editor).
+## Banco de dados
+- Nunca edite uma migration que já existe; crie uma nova.
+- Verificações de banco: me entregue o SQL para eu colar no SQL Editor do Supabase, não tente rodar.
+
+## Git
+- Não faça commit nem push. Ao terminar, liste os arquivos criados/alterados.
