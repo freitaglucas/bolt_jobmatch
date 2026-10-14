@@ -1,80 +1,67 @@
-import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDownLeft, ArrowUpRight, Coins, Info, TrendingUp } from 'lucide-react';
-import { Badge } from '../components/ui/badge';
+import { CalendarClock, Info, ShieldCheck, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { cn } from '../lib/utils';
-import { useTokenBalance, useTokenLedger } from '../features/tokens/hooks';
-import {
-  FEEDBACK_REWARD,
-  INITIAL_TOKENS,
-  SLA_HOURS,
-  formatLedgerDate,
-  mapLedgerRow,
-  summarizeMonth,
-} from '../features/tokens/token-rules';
+import { SLA_HOURS } from '../features/tokens/token-rules';
+
+const SLA_DAYS = SLA_HOURS / 24;
+
+const HIGHLIGHTS = [
+  {
+    icon: CalendarClock,
+    title: `Retorno em até ${SLA_DAYS} dias`,
+    text: 'Todo candidato ativo tem um prazo de retorno. Ele aparece em cada card do Pipeline e em "Minhas candidaturas".',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Mais tempo, sem sumir',
+    text: 'Se precisar de mais tempo, envie uma atualização com a nova data: até 2 adiamentos por etapa, de no máximo 14 dias.',
+  },
+  {
+    icon: Target,
+    title: 'Meta de 90% no prazo',
+    text: 'Em breve o painel mostra o seu índice de retorno no prazo e o desconto que ele garantiria.',
+  },
+];
 
 const RULES = [
-  `${INITIAL_TOKENS} tokens de boas-vindas quando o seu perfil é aprovado.`,
-  'Mover etapa, rejeitar e dar retorno manual são gratuitos e nunca travam por saldo.',
-  'Tokens vão pagar automações de contato com candidatos, como o retorno em lote por e-mail (em breve).',
-  `Enviar feedback em até ${SLA_HOURS / 24} dias após a última mudança de etapa devolve ${FEEDBACK_REWARD} token (1 por candidatura e etapa).`,
+  'Mover de etapa, rejeitar e dar retorno (individual ou em lote) são gratuitos e nunca travam.',
+  'Mudar de etapa conta como contato: o candidato sempre fica sabendo.',
+  'Ao dar um retorno de decisão, o prazo da etapa é cumprido e um novo prazo começa.',
+  'Rejeitar sempre leva um motivo. No retorno em lote, o motivo é sugerido pelo que o candidato informou no perfil.',
 ];
 
 export function Tokens() {
-  const balanceQuery = useTokenBalance();
-  const ledgerQuery = useTokenLedger();
-
-  const entries = useMemo(
-    () => (ledgerQuery.data ?? []).map(mapLedgerRow),
-    [ledgerQuery.data],
-  );
-  const month = useMemo(() => summarizeMonth(entries, new Date()), [entries]);
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Jornada do Recrutamento</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Tokens pagam automações de contato e premiam o retorno rápido a quem se candidata
+          Retorno no prazo: o candidato sempre sabe quando vai ter notícias
         </p>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="border-border overflow-hidden mb-6">
-          <div className="bg-gradient-purple-teal p-6 text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <Coins className="h-6 w-6 text-white" />
-              <span className="text-white/80 text-sm font-medium">Saldo de tokens</span>
-            </div>
-            <div className="text-5xl font-bold text-white">
-              {balanceQuery.isError
-                ? '—'
-                : balanceQuery.isLoading
-                  ? '...'
-                  : balanceQuery.data ?? 0}
-            </div>
-            {balanceQuery.isError && (
-              <p className="text-white/80 text-sm mt-2">
-                Não foi possível carregar o saldo.
-              </p>
-            )}
-            {!ledgerQuery.isLoading && !ledgerQuery.isError && (
-              <div className="flex items-center justify-center gap-2 mt-3">
-                <Badge className="bg-white/15 text-white border-0">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  +{month.earned} este mês
-                </Badge>
-                <Badge className="bg-white/15 text-white border-0">
-                  -{month.spent} este mês
-                </Badge>
-              </div>
-            )}
-          </div>
-        </Card>
-      </motion.div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6">
+        {HIGHLIGHTS.map((item, index) => (
+          <motion.div
+            key={item.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <Card className="border-border h-full">
+              <CardContent className="p-5 space-y-2">
+                <div className="w-10 h-10 rounded-xl bg-jm-teal/10 flex items-center justify-center">
+                  <item.icon className="h-5 w-5 text-jm-teal" />
+                </div>
+                <h2 className="font-semibold">{item.title}</h2>
+                <p className="text-sm text-muted-foreground">{item.text}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
 
-      <Card className="border-border mb-6">
+      <Card className="border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Info className="h-5 w-5 text-primary" />
@@ -87,66 +74,6 @@ export function Tokens() {
               <li key={rule}>{rule}</li>
             ))}
           </ul>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">Histórico de tokens</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {ledgerQuery.isLoading && (
-            <p className="text-sm text-muted-foreground">Carregando o histórico...</p>
-          )}
-          {ledgerQuery.isError && (
-            <p className="text-sm text-destructive">
-              Não foi possível carregar o histórico.
-            </p>
-          )}
-          {!ledgerQuery.isLoading && !ledgerQuery.isError && entries.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma movimentação de tokens ainda.
-            </p>
-          )}
-          <div className="space-y-2">
-            {entries.map((entry, i) => (
-              <motion.div
-                key={entry.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i, 10) * 0.04 }}
-                className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-colors"
-              >
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                    entry.type === 'earn' ? 'bg-jm-teal/15' : 'bg-jm-orange/15',
-                  )}
-                >
-                  {entry.type === 'earn' ? (
-                    <ArrowDownLeft className="h-5 w-5 text-jm-teal" />
-                  ) : (
-                    <ArrowUpRight className="h-5 w-5 text-jm-orange" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{entry.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatLedgerDate(entry.createdAt)}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    'text-sm font-bold shrink-0',
-                    entry.type === 'earn' ? 'text-jm-teal' : 'text-jm-orange',
-                  )}
-                >
-                  {entry.type === 'earn' ? '+' : '-'}
-                  {entry.amount}
-                </span>
-              </motion.div>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>

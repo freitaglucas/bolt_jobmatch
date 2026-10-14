@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   SLA_HOURS,
-  isInsufficientTokensError,
   mapLedgerRow,
   summarizeMonth,
   formatLedgerDate,
@@ -49,20 +48,6 @@ describe('mapLedgerRow', () => {
 
   it('usa titulo padrao para tipo desconhecido', () => {
     expect(mapLedgerRow(row('outro', 1)).title).toBe('Movimentação de tokens');
-  });
-});
-
-describe('isInsufficientTokensError', () => {
-  it('reconhece a mensagem do banco', () => {
-    expect(isInsufficientTokensError({ message: 'insufficient_tokens', code: 'P0001' })).toBe(true);
-    expect(isInsufficientTokensError(new Error('insufficient_tokens'))).toBe(true);
-  });
-
-  it('ignora outros erros e valores', () => {
-    expect(isInsufficientTokensError({ message: 'permission denied' })).toBe(false);
-    expect(isInsufficientTokensError(null)).toBe(false);
-    expect(isInsufficientTokensError('insufficient_tokens')).toBe(false);
-    expect(isInsufficientTokensError({})).toBe(false);
   });
 });
 

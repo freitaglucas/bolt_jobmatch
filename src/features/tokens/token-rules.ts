@@ -35,16 +35,6 @@ export function mapLedgerRow(row: TokenLedgerRow): LedgerEntry {
   };
 }
 
-// Reservado para as automacoes pagas (N15): o banco levantara 'insufficient_tokens'
-// quando a automacao exigir saldo. Mover etapa e rejeitar nunca bloqueiam por saldo.
-export function isInsufficientTokensError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-  const message = (error as { message?: unknown }).message;
-  return typeof message === 'string' && message.includes('insufficient_tokens');
-}
-
 export interface MonthTotals {
   earned: number;
   spent: number;
