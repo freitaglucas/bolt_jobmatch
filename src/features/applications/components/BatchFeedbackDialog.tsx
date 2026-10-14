@@ -16,8 +16,10 @@ import {
   DEFAULT_CLOSING,
   DEFAULT_OPENING,
   buildBatchPlan,
+  checkEligibility,
   defaultDueDate,
   dueDateBounds,
+  pickPreview,
   summarizeOutcomes,
   validateComposerTexts,
   validateDueDate,
@@ -25,6 +27,17 @@ import {
   type BatchOutcome,
 } from '../batch-feedback';
 import { useGiveBatchFeedback } from '../batch-feedback.hooks';
+import { useMatchInsights } from '../match-insights.hooks';
+import {
+  REASON_CODES,
+  REASON_HINTS,
+  REASON_LABELS,
+  allGroupsConfirmed,
+  groupByReason,
+  resolveReasons,
+  type MatchInsights,
+  type ReasonCode,
+} from '../rejection-reasons';
 
 interface BatchFeedbackDialogProps {
   candidates: PipelineCandidate[];
@@ -34,12 +47,13 @@ interface BatchFeedbackDialogProps {
 }
 
 const PREVIEW_COUNT = 3;
+const NO_INSIGHTS: Record<string, MatchInsights> = {};
+const NO_OVERRIDES: Record<string, ReasonCode> = {};
 
 const TYPE_OPTIONS: {
-  value: BatchFeedbackType | 'reject';
+  value: BatchFeedbackType;
   label: string;
   hint: string;
-  disabled?: boolean;
 }[] = [
   {
     value: 'update',
@@ -49,8 +63,7 @@ const TYPE_OPTIONS: {
   {
     value: 'reject',
     label: 'Não avançou',
-    hint: 'Com motivo por candidato. Chega no próximo passo',
-    disabled: true,
+    hint: 'Com o motivo de cada candidato. Vai para Rejeitado',
   },
   {
     value: 'advance',
@@ -73,6 +86,10 @@ export function BatchFeedbackDialog({
   const [dueDate, setDueDate] = useState(() => defaultDueDate(now));
   const [opening, setOpening] = useState(DEFAULT_OPENING);
   const [closing, setClosing] = useState(DEFAULT_CLOSING);
+  // Nao avancou: motivos escolhidos a mao, grupos confirmados e pontos fortes.
+  const [overrides, setOverrides] = useState<Record<string, ReasonCode>>(NO_OVERRIDES);
+  const [confirmed, setConfirmed] = useState<ReadonlySet<ReasonCode>>(new Set());
+  const [includeStrengths, setIncludeStrengths] = useState(true);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(
     null,
   );
@@ -80,9 +97,32 @@ export function BatchFeedbackDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const mutation = useGiveBatchFeedback();
 
+  const rejecting = type === 'reject';
+  const insightsQuery = useMatchInsights(
+    candidates.map((candidate) => candidate.id),
+    rejecting,
+  );
+  const insights = insightsQuery.data ?? NO_INSIGHTS;
+
   const bounds = dueDateBounds(now);
   const dateError = type === 'update' ? validateDueDate(dueDate, now) : null;
   const textError = validateComposerTexts(opening, closing);
+
+  // Quem pode receber "nao avancou" e o motivo de cada um (sugerido ou escolhido).
+  const rejectPool = useMemo(
+    () =>
+      rejecting
+        ? candidates.filter(
+            (candidate) => checkEligibility(candidate, 'reject', { dueDate, now }) === null,
+          )
+        : [],
+    [rejecting, candidates, dueDate, now],
+  );
+  const reasons = useMemo(
+    () => resolveReasons(rejectPool, insights, overrides),
+    [rejectPool, insights, overrides],
+  );
+  const groups = useMemo(() => groupByReason(rejectPool, reasons), [rejectPool, reasons]);
 
   // A mensagem e remontada a cada mudanca: previa e envio usam o mesmo texto.
   const plan = useMemo(
@@ -96,13 +136,50 @@ export function BatchFeedbackDialog({
             closing,
             dueDate,
             now: new Date(),
+            rejection: rejecting ? { reasons, insights, includeStrengths } : undefined,
           }),
-    [type, candidates, opening, closing, dueDate, dateError],
+    [
+      type,
+      candidates,
+      opening,
+      closing,
+      dueDate,
+      dateError,
+      rejecting,
+      reasons,
+      insights,
+      includeStrengths,
+    ],
   );
 
   const sending = mutation.isPending;
-  const canSend = !sending && !dateError && !textError && plan.entries.length > 0;
-  const preview = plan.entries.slice(0, PREVIEW_COUNT);
+  const rejectionReady =
+    !rejecting || (insightsQuery.isSuccess && allGroupsConfirmed(groups, confirmed));
+  const canSend =
+    !sending && !dateError && !textError && plan.entries.length > 0 && rejectionReady;
+  const preview = pickPreview(plan.entries, PREVIEW_COUNT);
+
+  function changeReason(candidateId: string, reason: ReasonCode) {
+    setOverrides((current) => ({ ...current, [candidateId]: reason }));
+    // O grupo que recebeu mais um candidato precisa ser confirmado de novo.
+    setConfirmed((current) => {
+      const next = new Set(current);
+      next.delete(reason);
+      return next;
+    });
+  }
+
+  function toggleConfirmed(reason: ReasonCode) {
+    setConfirmed((current) => {
+      const next = new Set(current);
+      if (next.has(reason)) {
+        next.delete(reason);
+      } else {
+        next.add(reason);
+      }
+      return next;
+    });
+  }
 
   function handleSend() {
     setErrorMessage(null);
@@ -190,13 +267,9 @@ export function BatchFeedbackDialog({
                     <button
                       key={option.value}
                       type="button"
-                      disabled={option.disabled || sending}
+                      disabled={sending}
                       aria-pressed={selected}
-                      onClick={() => {
-                        if (option.value !== 'reject') {
-                          setType(option.value);
-                        }
-                      }}
+                      onClick={() => setType(option.value)}
                       className={cn(
                         'rounded-lg border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                         selected
@@ -214,7 +287,7 @@ export function BatchFeedbackDialog({
               </div>
             </div>
 
-            {type === 'update' ? (
+            {type === 'update' && (
               <div className="space-y-1.5">
                 <label htmlFor="batch-due-date" className="text-sm font-medium">
                   Novo prazo de retorno
@@ -238,11 +311,100 @@ export function BatchFeedbackDialog({
                   </p>
                 )}
               </div>
-            ) : (
+            )}
+
+            {type === 'advance' && (
               <p className="text-sm text-muted-foreground">
                 Os candidatos vão para a próxima etapa e o prazo de retorno recomeça
                 (5 dias). A aprovação final continua individual.
               </p>
+            )}
+
+            {rejecting && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Os candidatos vão para Rejeitado. O motivo é sugerido pelo que cada um
+                  informou no perfil: confirme cada grupo antes de enviar. Não há texto
+                  livre de motivo no lote.
+                </p>
+
+                {insightsQuery.isLoading && (
+                  <p className="text-sm text-muted-foreground" aria-live="polite">
+                    Analisando os perfis...
+                  </p>
+                )}
+                {insightsQuery.isError && (
+                  <p className="text-sm text-destructive">
+                    Não foi possível ler os perfis para sugerir os motivos. Feche e tente
+                    de novo.
+                  </p>
+                )}
+
+                {insightsQuery.isSuccess &&
+                  groups.map((group) => (
+                    <div
+                      key={group.reason}
+                      className="rounded-lg border border-border p-3 space-y-2"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">
+                          {REASON_LABELS[group.reason]} ·{' '}
+                          {plural(group.candidates.length, 'candidato', 'candidatos')}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {REASON_HINTS[group.reason]}
+                        </p>
+                      </div>
+                      <ul className="space-y-1">
+                        {group.candidates.map((candidate) => (
+                          <li
+                            key={candidate.id}
+                            className="flex items-center justify-between gap-2 text-sm"
+                          >
+                            <span className="truncate">{candidate.name}</span>
+                            <select
+                              aria-label={`Motivo para ${candidate.name}`}
+                              value={group.reason}
+                              disabled={sending}
+                              onChange={(event) =>
+                                changeReason(candidate.id, event.target.value as ReasonCode)
+                              }
+                              className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                            >
+                              {REASON_CODES.map((code) => (
+                                <option key={code} value={code}>
+                                  {REASON_LABELS[code]}
+                                </option>
+                              ))}
+                            </select>
+                          </li>
+                        ))}
+                      </ul>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-primary"
+                          checked={confirmed.has(group.reason)}
+                          disabled={sending}
+                          onChange={() => toggleConfirmed(group.reason)}
+                        />
+                        Confirmo este motivo para{' '}
+                        {plural(group.candidates.length, 'candidato', 'candidatos')}
+                      </label>
+                    </div>
+                  ))}
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={includeStrengths}
+                    disabled={sending}
+                    onChange={(event) => setIncludeStrengths(event.target.checked)}
+                  />
+                  Incluir pontos fortes do candidato na mensagem
+                </label>
+              </div>
             )}
 
             <div className="space-y-1.5">
@@ -304,11 +466,18 @@ export function BatchFeedbackDialog({
                   >
                     <p className="text-xs text-muted-foreground mb-1">
                       Para {entry.candidate.name}
+                      {entry.reasonCode && ` · ${REASON_LABELS[entry.reasonCode]}`}
                     </p>
                     <p className="whitespace-pre-wrap text-sm">{entry.message}</p>
                   </div>
                 ))}
               </div>
+            )}
+
+            {rejecting && insightsQuery.isSuccess && !rejectionReady && (
+              <p className="text-xs text-muted-foreground">
+                Confirme todos os grupos de motivo para liberar o envio.
+              </p>
             )}
 
             {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
