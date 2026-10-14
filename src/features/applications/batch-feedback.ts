@@ -5,13 +5,19 @@ import type {
   BatchResponse,
 } from '../email/batch-feedback.schemas';
 import { SLA_HOURS } from '../tokens/token-rules';
-import { getNextStage } from './pipeline-transitions';
+import { canReject, getNextStage } from './pipeline-transitions';
+import {
+  EMPTY_INSIGHTS,
+  buildRejectionBody,
+  type MatchInsights,
+  type ReasonCode,
+} from './rejection-reasons';
 
 // Retorno em lote ao candidato (N15b). Regras puras: elegibilidade, mensagem,
 // plano de envio e orquestracao. A tela so liga isso aos botoes.
 
-// "Nao avancou" (com motivos) chega no N62.
-export type BatchFeedbackType = 'update' | 'advance';
+// "Nao avancou" leva um dos 5 motivos por candidato (N62).
+export type BatchFeedbackType = 'update' | 'advance' | 'reject';
 
 export const BATCH_CHUNK_SIZE = 25;
 export const BATCH_TEXT_MAX_LENGTH = 300;
@@ -127,6 +133,10 @@ export function checkEligibility(
   type: BatchFeedbackType,
   options: { dueDate: string; now: Date },
 ): string | null {
+  if (type === 'reject') {
+    return canReject(candidate.stage) ? null : 'A candidatura já foi encerrada.';
+  }
+
   if (type === 'advance') {
     if (candidate.stage === 'Final') {
       return 'A aprovação é feita individualmente.';
@@ -173,8 +183,10 @@ export interface BatchEntry {
   message: string;
   // Atualizacao: nova data (ISO). Avancou: null.
   newDueAt: string | null;
-  // Avancou: etapa para onde o candidato vai depois do envio.
+  // Avancou: proxima etapa. Nao avancou: Rejeitado. Atualizacao: null.
   targetStage: ApplicationStatus | null;
+  // Nao avancou: motivo (um dos 5 do N62), gravado em feedbacks.reason_code.
+  reasonCode?: ReasonCode | null;
 }
 
 export interface ExcludedCandidate {
@@ -191,13 +203,24 @@ export function buildBatchMessage(input: {
   closing: string;
   dueDate: string;
   now: Date;
+  // Nao avancou (N62): motivo escolhido, dados do match e pontos fortes.
+  reason?: ReasonCode;
+  insights?: MatchInsights;
+  includeStrengths?: boolean;
 }): string {
   const { candidate } = input;
   const job = candidate.jobTitle?.trim() || 'vaga';
   const name = firstName(candidate.name);
 
   let body: string;
-  if (input.type === 'update') {
+  if (input.type === 'reject') {
+    body = buildRejectionBody({
+      reason: input.reason ?? 'better_fit',
+      insights: input.insights ?? EMPTY_INSIGHTS,
+      jobTitle: job,
+      includeStrengths: input.includeStrengths ?? false,
+    });
+  } else if (input.type === 'update') {
     const date = parseDateInput(input.dueDate);
     const dueText = date ? formatBr(date) : input.dueDate;
     body = `Você segue no processo da vaga ${job}, na etapa ${candidate.stage}. Ainda não temos uma decisão e, para não deixar você sem notícias, o nosso próximo retorno será até ${dueText}.`;
@@ -212,6 +235,16 @@ export function buildBatchMessage(input: {
     .join('\n\n');
 }
 
+function targetStageFor(
+  type: BatchFeedbackType,
+  stage: ApplicationStatus,
+): ApplicationStatus | null {
+  if (type === 'advance') {
+    return getNextStage(stage);
+  }
+  return type === 'reject' ? 'Rejeitado' : null;
+}
+
 // Separa quem entra no lote de quem nao se aplica, e monta a mensagem de cada um.
 export function buildBatchPlan(input: {
   type: BatchFeedbackType;
@@ -220,6 +253,12 @@ export function buildBatchPlan(input: {
   closing: string;
   dueDate: string;
   now: Date;
+  // Nao avancou: motivo e dados do match de cada candidatura (chave = id).
+  rejection?: {
+    reasons: Readonly<Record<string, ReasonCode>>;
+    insights: Readonly<Record<string, MatchInsights | undefined>>;
+    includeStrengths: boolean;
+  };
 }): { entries: BatchEntry[]; excluded: ExcludedCandidate[] } {
   const entries: BatchEntry[] = [];
   const excluded: ExcludedCandidate[] = [];
@@ -234,11 +273,26 @@ export function buildBatchPlan(input: {
       excluded.push({ candidate, reason });
       continue;
     }
+    let reasonCode: ReasonCode | null = null;
+    if (input.type === 'reject') {
+      reasonCode = input.rejection?.reasons[candidate.id] ?? null;
+      if (!reasonCode) {
+        excluded.push({ candidate, reason: 'Escolha o motivo do retorno.' });
+        continue;
+      }
+    }
     entries.push({
       candidate,
-      message: buildBatchMessage({ ...input, candidate }),
+      message: buildBatchMessage({
+        ...input,
+        candidate,
+        reason: reasonCode ?? undefined,
+        insights: input.rejection?.insights[candidate.id],
+        includeStrengths: input.rejection?.includeStrengths,
+      }),
       newDueAt,
-      targetStage: input.type === 'advance' ? getNextStage(candidate.stage) : null,
+      reasonCode,
+      targetStage: targetStageFor(input.type, candidate.stage),
     });
   }
 
@@ -253,7 +307,35 @@ export function toRequestItem(entry: BatchEntry): BatchRequestItem {
         message: entry.message,
         new_due_at: entry.newDueAt,
       }
-    : { application_id: entry.candidate.id, kind: 'decision', message: entry.message };
+    : {
+        application_id: entry.candidate.id,
+        kind: 'decision',
+        message: entry.message,
+        ...(entry.reasonCode ? { reason_code: entry.reasonCode } : {}),
+      };
+}
+
+// Previa: ate `count` mensagens de candidatos diferentes, com um de cada motivo
+// primeiro (para ver como cada grupo le a mensagem).
+export function pickPreview(entries: readonly BatchEntry[], count: number): BatchEntry[] {
+  const picked: BatchEntry[] = [];
+  const seenReasons = new Set<string>();
+  for (const entry of entries) {
+    const key = entry.reasonCode ?? '';
+    if (picked.length < count && !seenReasons.has(key)) {
+      seenReasons.add(key);
+      picked.push(entry);
+    }
+  }
+  for (const entry of entries) {
+    if (picked.length >= count) {
+      break;
+    }
+    if (!picked.includes(entry)) {
+      picked.push(entry);
+    }
+  }
+  return picked;
 }
 
 export function chunk<T>(items: readonly T[], size: number): T[][] {
