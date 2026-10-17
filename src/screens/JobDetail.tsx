@@ -18,6 +18,8 @@ import {
   Share2,
 } from 'lucide-react';
 import type { Job, SkillRequirement } from '@/lib/types';
+import { ReturnAssurance } from '@/features/return-seal/components/ReturnAssurance';
+import { useReturnSeals } from '@/features/return-seal/hooks';
 import { cn } from '@/lib/utils';
 
 interface JobDetailProps {
@@ -95,6 +97,7 @@ function SkillDetail({ skill }: { skill: SkillRequirement }) {
 }
 
 export function JobDetail({ job, onBack, onApply, alreadyApplied }: JobDetailProps) {
+  const seals = useReturnSeals([job.id]);
   const matchSkills = job.skills.filter((s) => s.candidateLevel >= s.level).length;
   const gapSkills = job.skills.filter((s) => s.candidateLevel > 0 && s.candidateLevel < s.level).length;
   const missingSkills = job.skills.filter((s) => s.candidateLevel === 0).length;
@@ -148,6 +151,11 @@ export function JobDetail({ job, onBack, onApply, alreadyApplied }: JobDetailPro
                     <Badge key={tag} variant="secondary">{tag}</Badge>
                   ))}
                 </div>
+                <ReturnAssurance
+                  sealPercent={seals.byJob[job.id] ?? null}
+                  showPeriod
+                  className="mt-3"
+                />
               </div>
             </div>
           </div>

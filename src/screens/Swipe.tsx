@@ -30,6 +30,8 @@ import {
 } from '@/features/jobs/filters';
 import { seniorityLabel } from '@/features/jobs/seniority';
 import { JobFiltersBar } from '@/features/jobs/components/JobFiltersBar';
+import { ReturnAssurance } from '@/features/return-seal/components/ReturnAssurance';
+import { useReturnSeals } from '@/features/return-seal/hooks';
 import { useMyMatchSkills } from '@/features/candidates/hooks';
 import { calculateSwipeMatch } from '@/features/match/adapters/swipeMatchAdapter';
 import type { CandidateSkill, MatchFactor } from '@/features/match/types';
@@ -112,6 +114,7 @@ function JobCard({
   isTop,
   index,
   isApplying,
+  sealPercent,
 }: {
   card: SwipeDeckCard;
   onDragEnd: (offsetX: number) => 'left' | 'right' | null;
@@ -119,6 +122,7 @@ function JobCard({
   isTop: boolean;
   index: number;
   isApplying: boolean;
+  sealPercent?: number | null;
 }) {
   const [exitX, setExitX] = useState(0);
   const { job, match } = card;
@@ -190,6 +194,7 @@ function JobCard({
                 </span>
               )}
             </div>
+            <ReturnAssurance sealPercent={sealPercent} className="mt-3" />
           </div>
 
           {/* Body */}
@@ -287,6 +292,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
     [jobs, filters, candidateSkills],
   );
   const deck = useSwipeDeck(filteredJobs, candidateSkills, onApply);
+  const seals = useReturnSeals(jobs.map((item) => item.id));
   const currentJob = deck.currentJob;
   const queryError = jobsQuery.error ?? skillsQuery.error;
   const noFilterResults = jobs.length > 0 && filteredJobs.length === 0;
@@ -434,6 +440,7 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
                   isTop={index === 0}
                   index={index}
                   isApplying={deck.isApplying}
+                  sealPercent={seals.byJob[card.job.id] ?? null}
                 />
               ))
           )}

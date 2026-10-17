@@ -447,6 +447,9 @@ isOneToOne: false
                            },
 "is_approved_recruiter":
 { Args: { "_user_id": string }; Returns: boolean
+                           },
+"public_return_seals":
+{ Args: { "_job_ids": string[] }; Returns: { job_id: string; seal_percent: number }[]
                            }
           }
           Enums: {
