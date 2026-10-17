@@ -26,6 +26,13 @@ import {
 import { mapRecruiterApplication } from '../features/applications/recruiter-applications';
 import { useRecruiterApplications } from '../features/applications/recruiter-applications.hooks';
 import { useRecruiterJobs } from '../features/jobs/recruiter-jobs.hooks';
+import {
+  countOpenDeadlines,
+  sumGoalRows,
+  summarizeGoal,
+} from '../features/feedback-goal/goal-rules';
+import { useGoalAttainment } from '../features/feedback-goal/hooks';
+import { SLA_HOURS } from '../features/tokens/token-rules';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -60,6 +67,15 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     [candidates, jobsQuery.data],
   );
   const topCandidates = useMemo(() => pickTopCandidates(candidates), [candidates]);
+  const goalQuery = useGoalAttainment();
+  const deadlineCounts = useMemo(
+    () => countOpenDeadlines(candidates, new Date()),
+    [candidates],
+  );
+  const goalSummary = useMemo(
+    () => summarizeGoal(sumGoalRows(goalQuery.data ?? [])),
+    [goalQuery.data],
+  );
 
   if (applicationsQuery.isLoading || jobsQuery.isLoading) {
     return (
@@ -121,6 +137,60 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           Nova vaga
         </Button>
       </div>
+
+      {/* Prazos de retorno (ou primeira vaga) */}
+      {(jobsQuery.data ?? []).length === 0 ? (
+        <Card className="border-border mb-8">
+          <CardContent className="p-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold">Publique sua primeira vaga</h2>
+              <p className="text-sm text-muted-foreground">
+                Cada candidato que chegar terá um prazo de retorno de até{' '}
+                {SLA_HOURS / 24} dias.
+              </p>
+            </div>
+            <Button onClick={() => onNavigate('job-create')}>Criar vaga</Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Prazos de retorno
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="border-border">
+              <CardContent className="p-5">
+                <div className="text-3xl font-bold text-jm-red">{deadlineCounts.overdue}</div>
+                <div className="text-sm text-muted-foreground mt-1">Atrasados</div>
+              </CardContent>
+            </Card>
+            <Card className="border-border">
+              <CardContent className="p-5">
+                <div className="text-3xl font-bold text-jm-orange">{deadlineCounts.dueToday}</div>
+                <div className="text-sm text-muted-foreground mt-1">Vencem hoje</div>
+              </CardContent>
+            </Card>
+            <Card className="border-border">
+              <CardContent className="p-5">
+                <div className="text-3xl font-bold text-jm-teal">
+                  {goalSummary.percent === null ? '—' : `${goalSummary.percent}%`}
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  No prazo neste mês · meta de 90%
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => onNavigate('pipeline')}>
+              Ver no Pipeline
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate('tokens')}>
+              Ver a meta
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -226,9 +296,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <Clock className="h-7 w-7 text-jm-teal" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold">Jornada do recrutamento</h3>
+              <h3 className="font-semibold">Retorno no prazo</h3>
               <p className="text-sm text-muted-foreground">
-                Prazo de retorno e regras do retorno ao candidato
+                Sua meta do mês e as regras do retorno ao candidato
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />

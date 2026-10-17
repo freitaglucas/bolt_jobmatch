@@ -1,7 +1,5 @@
 export const SLA_HOURS = 120;
 export const INITIAL_TOKENS = 20;
-export const FEEDBACK_REWARD = 1;
-
 export interface TokenLedgerRow {
   id: string;
   amount: number;

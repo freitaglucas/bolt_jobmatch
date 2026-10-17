@@ -424,6 +424,15 @@ isOneToOne: false
 "max_feedback_postpones":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
+"feedback_goal_attainment":
+{ Args: { "_since"?: string }; Returns: { job_id: string; total: number; on_time: number }[]
+                           },
+"feedback_goal_discount":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"feedback_goal_target":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "postpone_feedback":
 { Args: { "_application_id": string,"_message": string,"_new_due_at": string }; Returns: string
                            },
