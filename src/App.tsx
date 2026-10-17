@@ -223,7 +223,7 @@ function App() {
           )}
           {screen === 'pipeline' && <Pipeline />}
           {screen === 'post-hire' && <PostHire onBack={() => setScreen('jobs')} />}
-          {screen === 'tokens' && <Tokens />}
+          {screen === 'tokens' && <Tokens onNavigate={setScreen} />}
           {screen === 'company' && <Company />}
         </motion.div>
       </AnimatePresence>

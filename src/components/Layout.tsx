@@ -41,7 +41,7 @@ const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'jobs', label: 'Vagas' },
   { screen: 'pipeline', label: 'Pipeline' },
   { screen: 'post-hire', label: 'Pós-contratação' },
-  { screen: 'tokens', label: 'Jornada' },
+  { screen: 'tokens', label: 'Retorno no prazo' },
   { screen: 'company', label: 'Minha empresa' },
 ]
 

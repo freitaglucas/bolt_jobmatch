@@ -1,6 +1,19 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarClock, Info, ShieldCheck, Target } from 'lucide-react';
+import type { Screen } from '../components/Layout';
+import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { focusPipelineOnJob } from '../features/applications/pipeline-focus';
+import {
+  MAX_POSTPONES_PER_STAGE,
+  MAX_POSTPONE_DAYS_PICKER,
+} from '../features/applications/batch-feedback';
+import { GoalByJob } from '../features/feedback-goal/components/GoalByJob';
+import { GoalPanel } from '../features/feedback-goal/components/GoalPanel';
+import { DISCOUNT_PERCENT, GOAL_PERCENT, sumGoalRows } from '../features/feedback-goal/goal-rules';
+import { useGoalAttainment } from '../features/feedback-goal/hooks';
+import { useRecruiterJobs } from '../features/jobs/recruiter-jobs.hooks';
 import { SLA_HOURS } from '../features/tokens/token-rules';
 
 const SLA_DAYS = SLA_HOURS / 24;
@@ -14,30 +27,74 @@ const HIGHLIGHTS = [
   {
     icon: ShieldCheck,
     title: 'Mais tempo, sem sumir',
-    text: 'Se precisar de mais tempo, envie uma atualização com a nova data: até 2 adiamentos por etapa, de no máximo 14 dias.',
+    text: `Se precisar de mais tempo, envie uma atualização com a nova data: até ${MAX_POSTPONES_PER_STAGE} adiamentos por etapa, com a nova data em até ${MAX_POSTPONE_DAYS_PICKER} dias.`,
   },
   {
     icon: Target,
-    title: 'Meta de 90% no prazo',
-    text: 'Em breve o painel mostra o seu índice de retorno no prazo e o desconto que ele garantiria.',
+    title: `Meta de ${GOAL_PERCENT}% no prazo`,
+    text: `Cumprir a meta garante ${DISCOUNT_PERCENT}% de desconto na mensalidade (simulado durante o beta).`,
   },
 ];
 
 const RULES = [
-  'Mover de etapa, rejeitar e dar retorno (individual ou em lote) são gratuitos e nunca travam.',
   'Mudar de etapa conta como contato: o candidato sempre fica sabendo.',
   'Ao dar um retorno de decisão, o prazo da etapa é cumprido e um novo prazo começa.',
   'Rejeitar sempre leva um motivo. No retorno em lote, o motivo é sugerido pelo que o candidato informou no perfil.',
+  'O índice do mês conta os prazos já cumpridos e os que venceram sem retorno. Prazo aberto ainda dentro do prazo não entra na conta.',
 ];
 
-export function Tokens() {
+interface TokensProps {
+  onNavigate: (screen: Screen) => void;
+}
+
+// Tela "Retorno no prazo" (o arquivo ainda se chama Tokens por historico).
+export function Tokens({ onNavigate }: TokensProps) {
+  const goalQuery = useGoalAttainment();
+  const jobsQuery = useRecruiterJobs();
+
+  const rows = useMemo(() => goalQuery.data ?? [], [goalQuery.data]);
+  const totals = useMemo(() => sumGoalRows(rows), [rows]);
+  const jobTitles = useMemo(
+    () =>
+      Object.fromEntries((jobsQuery.data ?? []).map((job) => [job.id, job.title])) as Record<
+        string,
+        string
+      >,
+    [jobsQuery.data],
+  );
+
+  const openJob = (jobId: string) => {
+    focusPipelineOnJob(jobId);
+    onNavigate('pipeline');
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Jornada do Recrutamento</h1>
+        <h1 className="text-2xl font-bold">Retorno no prazo</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Retorno no prazo: o candidato sempre sabe quando vai ter notícias
+          O candidato sempre sabe quando vai ter notícias. Aqui você acompanha a sua meta.
         </p>
+      </div>
+
+      <div className="space-y-4 mb-6">
+        {goalQuery.isLoading && (
+          <p className="text-sm text-muted-foreground">Carregando o seu índice...</p>
+        )}
+        {goalQuery.isError && (
+          <div className="space-y-2">
+            <p className="text-sm text-destructive">Não foi possível carregar o seu índice.</p>
+            <Button variant="outline" size="sm" onClick={() => void goalQuery.refetch()}>
+              Tentar de novo
+            </Button>
+          </div>
+        )}
+        {goalQuery.isSuccess && (
+          <>
+            <GoalPanel totals={totals} />
+            <GoalByJob rows={rows} jobTitles={jobTitles} onOpenJob={openJob} />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mb-6">

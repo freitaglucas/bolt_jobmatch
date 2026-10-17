@@ -15,6 +15,8 @@ import {
   BATCH_TEXT_MAX_LENGTH,
   DEFAULT_CLOSING,
   DEFAULT_OPENING,
+  MAX_POSTPONE_DAYS_PICKER,
+  MAX_POSTPONES_PER_STAGE,
   buildBatchPlan,
   checkEligibility,
   defaultDueDate,
@@ -221,8 +223,7 @@ export function BatchFeedbackDialog({
             Dar retorno a {plural(candidates.length, 'candidato', 'candidatos')}
           </DialogTitle>
           <DialogDescription>
-            Cada candidato recebe a própria mensagem, no app e por e-mail. É grátis e
-            nunca trava.
+            Cada candidato recebe a própria mensagem, no app e por e-mail.
           </DialogDescription>
         </DialogHeader>
 
@@ -306,8 +307,8 @@ export function BatchFeedbackDialog({
                   <p className="text-xs text-destructive">{dateError}</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Até 13 dias a partir de hoje. Cada candidato pode ter 2 adiamentos
-                    por etapa.
+                    Até {MAX_POSTPONE_DAYS_PICKER} dias a partir de hoje. Cada candidato
+                    pode ter {MAX_POSTPONES_PER_STAGE} adiamentos por etapa.
                   </p>
                 )}
               </div>
