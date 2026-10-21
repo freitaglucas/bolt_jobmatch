@@ -31,6 +31,7 @@ type AppState = 'landing' | 'auth' | 'app';
 function App() {
   const [appState, setAppState] = useState<AppState>('landing');
   const [role, setRole] = useState<Role>('candidate');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [screen, setScreen] = useState<Screen>('swipe');
   const [darkMode, setDarkMode] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -156,8 +157,9 @@ function App() {
     return (
       <div className={darkMode ? '' : 'light'}>
         <Landing
-          onAuth={(r) => {
+          onAuth={(r, m) => {
             setRole(r);
+            setAuthMode(m);
             setAppState('auth');
           }}
           darkMode={darkMode}
@@ -176,6 +178,8 @@ function App() {
           onLogin={handleAuth}
           onBack={() => setAppState('landing')}
           darkMode={darkMode}
+          initialRole={role}
+          initialMode={authMode}
         />
         <Toaster />
       </div>
