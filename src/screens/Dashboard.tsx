@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  HeartHandshake,
   KanbanSquare,
   Plus,
   TrendingUp,
@@ -250,7 +249,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Card
           className="border-border cursor-pointer hover:border-primary/30 transition-all group"
           onClick={() => onNavigate('pipeline')}
@@ -263,24 +262,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <h3 className="font-semibold">Pipeline de candidatos</h3>
               <p className="text-sm text-muted-foreground">
                 Mova candidatos entre as etapas e envie feedback
-              </p>
-            </div>
-            <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
-          </CardContent>
-        </Card>
-
-        <Card
-          className="border-border cursor-pointer hover:border-primary/30 transition-all group"
-          onClick={() => onNavigate('post-hire')}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-jm-orange/10 flex items-center justify-center">
-              <HeartHandshake className="h-7 w-7 text-jm-orange" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold">Pós-contratação</h3>
-              <p className="text-sm text-muted-foreground">
-                Acompanhe os 3 meses de experiência
               </p>
             </div>
             <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />

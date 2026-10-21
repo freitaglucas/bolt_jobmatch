@@ -40,7 +40,6 @@ const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'dashboard', label: 'Dashboard' },
   { screen: 'jobs', label: 'Vagas' },
   { screen: 'pipeline', label: 'Pipeline' },
-  { screen: 'post-hire', label: 'Pós-contratação' },
   { screen: 'tokens', label: 'Retorno no prazo' },
   { screen: 'company', label: 'Minha empresa' },
 ]
@@ -151,7 +150,7 @@ export function Layout({
       <footer className="border-t border-border py-6 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <Logo size={24} />
-          <p>Protótipo visual - dados mockados - JobMatch 2026</p>
+          <p>Job Match 2026 · Dúvidas? lucas@jobmatchrh.com</p>
         </div>
       </footer>
     </div>

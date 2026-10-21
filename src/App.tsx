@@ -23,6 +23,7 @@ import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate'
 import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
 import { RecruiterOnboardingGate } from '@/features/recruiters/components/RecruiterOnboardingGate';
 import { createApplication } from '@/features/applications/api';
+import { APP_NAME, screenTitle } from '@/lib/screen-title';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
 
 type AppState = 'landing' | 'auth' | 'app';
@@ -38,6 +39,10 @@ function App() {
   const { toast } = useToast();
   const auth = useAuth();
   const isResetPasswordRoute = window.location.pathname === '/reset-password';
+
+  useEffect(() => {
+    document.title = appState === 'app' ? screenTitle(screen) : APP_NAME;
+  }, [appState, screen]);
 
   useEffect(() => {
     if (isResetPasswordRoute) {

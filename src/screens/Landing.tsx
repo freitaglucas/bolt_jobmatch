@@ -13,7 +13,6 @@ import {
   Users,
   Briefcase,
   Sparkles,
-  TrendingUp,
 } from 'lucide-react';
 
 interface LandingProps {
@@ -138,31 +137,6 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="border-y border-border bg-card/50">
-        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { value: '92%', label: 'Match médio das contratações' },
-            { value: '3x', label: 'Mais rápido que processo tradicional' },
-            { value: '50+', label: 'Vagas ativas no piloto' },
-            { value: '340', label: 'Tokens distribuídos a recrutadores' },
-          ].map((stat, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <div className="text-2xl md:text-3xl font-bold text-gradient-purple-teal">
-                {stat.value}
-              </div>
-              <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
       {/* Pillars */}
       <section className="max-w-7xl mx-auto px-4 py-20">
         <div className="text-center mb-12">
@@ -260,7 +234,7 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
             </h2>
           </div>
           <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Experimente o protótipo agora. Escolha seu perfil e explore a plataforma.
+            Escolha seu perfil para começar.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button
@@ -268,7 +242,7 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
               onClick={() => onAuth('candidate')}
               className="bg-gradient-purple-teal text-white border-0 hover:opacity-90 w-full sm:w-auto"
             >
-              Explarar como candidato
+              Explorar como candidato
               <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
             <Button
@@ -288,13 +262,7 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
       <footer className="border-t border-border py-8 px-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <Logo size={24} />
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <TrendingUp className="h-4 w-4" />
-              Protótipo visual
-            </span>
-            <span>JobMatch 2026</span>
-          </div>
+          <p className="text-sm text-muted-foreground">Job Match 2026</p>
         </div>
       </footer>
     </div>

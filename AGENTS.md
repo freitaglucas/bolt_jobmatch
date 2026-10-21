@@ -1,13 +1,15 @@
 # Job Match — Guia para Agentes
 
 ## Produto
-ATS humanizada. Transparência para candidato (Match Score explicado)
-+ tokens para recrutador (feedback no prazo).
+ATS humanizada. Transparência para o candidato (Match Score explicado)
++ retorno no prazo ao candidato: prazo por candidato, meta de 90%,
+selo público e desconto simulado no beta.
 Concorrentes: Gupy, Greenhouse, Tako.
 
 ## Estágio atual
 Validação acadêmica. Sandbox com ~50 testers e 50 vagas seedadas.
 Sem cliente-âncora. Avaliação por 3 professores (2 Produto, 1 Gestão Org).
+Beta do MVP planejado para janeiro de 2027.
 
 ## Stack
 Vite + React 18 + TS + shadcn-ui + Tailwind + Framer Motion + Supabase
@@ -31,11 +33,15 @@ src/shared/{ui,lib,hooks,types}
 10. Não editar: .env, migrations aplicadas, src/shared/ui/**.
 11. Parser de vaga NUNCA define nível ou peso — só estrutura competências.
 12. Todo evento de comportamento vira event_log.
+13. Toda tabela nova tem RLS e teste pgTAP em supabase/tests.
+14. Tabela nova de dado de empresa leva org_id a partir do N18 (até lá, marque TODO(N18)).
+15. Texto ao usuário nunca fala de "token", "protótipo" ou "mockado".
+16. Função pública (anon) devolve o mínimo e nunca dado de pessoa.
 
 ## Domínio
 - Match Score: 0–100, por competências. Determinístico, não LLM.
-- Tokens: moeda interna do recrutador.
-- Jornada do Recrutamento: painel de tokens.
+- Token: saldo legado do recrutador. Não paga nada desde 08/10; o extrato fica como histórico.
+- Retorno no prazo: todo candidato ativo tem prazo de retorno (feedback_deadlines). A tela "Retorno no prazo" mostra a meta de 90% e o desconto simulado.
 - Guia de Entrevista: gerado ao agendar.
 - Medalhista de prata: candidato aprovado mas não contratado.
 - Assistente de Estruturação de Vaga: IA que estrutura texto livre em competências.
