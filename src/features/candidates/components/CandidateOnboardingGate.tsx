@@ -1,4 +1,6 @@
-import type { PropsWithChildren } from 'react';
+import { useEffect, useRef, type PropsWithChildren } from 'react';
+import { trackProfileCompleted, trackProfileStarted } from '@/features/telemetry/api';
+import { funnelSource, loadJobLinkOrigin } from '@/features/telemetry/origin';
 import { GateError, GatePage, SessionSplash } from '@/components/GateShell';
 import { isCandidateProfileComplete } from '../api';
 import { useMyCandidateProfile, useSaveCandidateProfile } from '../hooks';
@@ -10,6 +12,26 @@ export function CandidateOnboardingGate({
 }: PropsWithChildren<{ onLogout?: () => void }>) {
   const profileQuery = useMyCandidateProfile();
   const saveMutation = useSaveCandidateProfile();
+  const profileData = profileQuery.data;
+  const isComplete = Boolean(profileData && isCandidateProfileComplete(profileData));
+  const showsForm = !profileQuery.isLoading && !profileQuery.isError && !isComplete;
+  const sawFormRef = useRef(false);
+
+  // Funil (N84): "comecou o perfil" quando o formulario aparece e "completou o
+  // perfil" quando ele libera o app. Cada marco conta uma vez por pessoa.
+  useEffect(() => {
+    if (showsForm && !sawFormRef.current) {
+      sawFormRef.current = true;
+      void trackProfileStarted(funnelSource(loadJobLinkOrigin())).catch(() => undefined);
+    }
+  }, [showsForm]);
+
+  useEffect(() => {
+    if (isComplete && sawFormRef.current) {
+      sawFormRef.current = false;
+      void trackProfileCompleted(funnelSource(loadJobLinkOrigin())).catch(() => undefined);
+    }
+  }, [isComplete]);
 
   if (profileQuery.isLoading) {
     return <SessionSplash label="Carregando seu perfil…" />;

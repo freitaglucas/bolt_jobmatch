@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ import { useMyMatchSkills } from '@/features/candidates/hooks';
 import { calculateSwipeMatch } from '@/features/match/adapters/swipeMatchAdapter';
 import type { CandidateSkill, MatchFactor } from '@/features/match/types';
 import { cn } from '@/lib/utils';
+import { prioritizeJob } from '@/features/telemetry/origin';
+import { trackJobViewed } from '@/features/telemetry/api';
 import {
   Popover,
   PopoverContent,
@@ -48,6 +50,8 @@ const EMPTY_SKILLS: CandidateSkill[] = [];
 interface SwipeProps {
   onApply: (job: Job) => Promise<boolean>;
   onDetail: (job: Job) => void;
+  // Vaga do link "?vaga=<id>" (N84): aparece primeiro no deck.
+  priorityJobId?: string | null;
 }
 
 function SkillRow({ skill }: { skill: MatchFactor }) {
@@ -274,7 +278,7 @@ function JobCard({
   );
 }
 
-export function Swipe({ onApply, onDetail }: SwipeProps) {
+export function Swipe({ onApply, onDetail, priorityJobId = null }: SwipeProps) {
   const [filters, setFilters] = useState<JobFilters>(DEFAULT_JOB_FILTERS);
   const jobsQuery = useActiveJobs();
   const skillsQuery = useMyMatchSkills();
@@ -291,11 +295,28 @@ export function Swipe({ onApply, onDetail }: SwipeProps) {
       ),
     [jobs, filters, candidateSkills],
   );
-  const deck = useSwipeDeck(filteredJobs, candidateSkills, onApply);
+  const orderedJobs = useMemo(
+    () => prioritizeJob(filteredJobs, priorityJobId),
+    [filteredJobs, priorityJobId],
+  );
+  const deck = useSwipeDeck(orderedJobs, candidateSkills, onApply);
   const seals = useReturnSeals(jobs.map((item) => item.id));
   const currentJob = deck.currentJob;
   const queryError = jobsQuery.error ?? skillsQuery.error;
   const noFilterResults = jobs.length > 0 && filteredJobs.length === 0;
+  const viewedLinkRef = useRef<string | null>(null);
+
+  // "Abriu a vaga" pelo link (N84): a vaga do link chegou ao topo do deck.
+  useEffect(() => {
+    if (
+      priorityJobId &&
+      currentJob?.id === priorityJobId &&
+      viewedLinkRef.current !== priorityJobId
+    ) {
+      viewedLinkRef.current = priorityJobId;
+      void trackJobViewed(priorityJobId, 'job_link').catch(() => undefined);
+    }
+  }, [currentJob?.id, priorityJobId]);
 
   if (jobsQuery.isLoading || skillsQuery.isLoading) {
     return (

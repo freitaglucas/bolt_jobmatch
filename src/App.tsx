@@ -24,7 +24,14 @@ import { CandidateOnboardingGate } from '@/features/candidates/components/Candid
 import { RecruiterOnboardingGate } from '@/features/recruiters/components/RecruiterOnboardingGate';
 import { createApplication } from '@/features/applications/api';
 import { APP_NAME, screenTitle } from '@/lib/screen-title';
-import { trackApplicationSubmitted } from '@/features/telemetry/api';
+import { trackApplicationSubmitted, trackJobViewed } from '@/features/telemetry/api';
+import {
+  clearJobLinkOrigin,
+  loadJobLinkOrigin,
+  readJobLinkParam,
+  saveJobLinkOrigin,
+  stripJobLinkParam,
+} from '@/features/telemetry/origin';
 import { readDeepLinkScreen, stripDeepLinkParam } from '@/lib/deep-link';
 import { resolveAppState, type AppState } from '@/lib/app-state';
 import { SessionSplash } from '@/components/GateShell';
@@ -44,11 +51,25 @@ function App() {
   const isResetPasswordRoute = window.location.pathname === '/reset-password';
   // Link do e-mail ao candidato (N74): "?tela=candidaturas" abre Candidaturas apos o login.
   const deepLinkRef = useRef<Screen | null>(readDeepLinkScreen(window.location.search));
+  // Link da vaga (N84): "?vaga=<id>" fica guardado neste navegador ate a candidatura.
+  const [linkedJobId, setLinkedJobId] = useState<string | null>(() => {
+    const fromUrl = readJobLinkParam(window.location.search);
+    if (fromUrl) {
+      saveJobLinkOrigin(fromUrl);
+      return fromUrl;
+    }
+    return loadJobLinkOrigin()?.jobId ?? null;
+  });
 
   useEffect(() => {
-    if (deepLinkRef.current) {
-      const { pathname, search, hash } = window.location;
-      window.history.replaceState(null, '', stripDeepLinkParam(pathname, search, hash));
+    const { pathname, search, hash } = window.location;
+    let next = stripDeepLinkParam(pathname, search, hash);
+    if (readJobLinkParam(search)) {
+      const url = new URL(next, window.location.origin);
+      next = stripJobLinkParam(url.pathname, url.search, url.hash);
+    }
+    if (next !== `${pathname}${search}${hash}`) {
+      window.history.replaceState(null, '', next);
     }
   }, []);
 
@@ -114,10 +135,17 @@ function App() {
     try {
       const result = await createApplication(job.id);
       setAppliedJobIds((previous) => new Set(previous).add(job.id));
+      const fromJobLink = linkedJobId === job.id;
+      if (fromJobLink) {
+        clearJobLinkOrigin();
+        setLinkedJobId(null);
+      }
       if (result.created) {
         void trackApplicationSubmitted(
           job.id,
           result.application.match_score,
+          undefined,
+          fromJobLink ? 'job_link' : 'direct',
         ).catch(() => undefined);
         toast({
           title: 'Candidatura enviada!',
@@ -143,6 +171,7 @@ function App() {
   };
 
   const handleDetail = (job: Job) => {
+    void trackJobViewed(job.id, 'detail').catch(() => undefined);
     setSelectedJob(job);
     setScreen('job-detail');
   };
@@ -231,7 +260,11 @@ function App() {
           transition={{ duration: 0.2 }}
         >
           {screen === 'swipe' && (
-            <Swipe onApply={handleApply} onDetail={handleDetail} />
+            <Swipe
+              onApply={handleApply}
+              onDetail={handleDetail}
+              priorityJobId={linkedJobId}
+            />
           )}
           {screen === 'job-detail' && selectedJob && (
             <JobDetail

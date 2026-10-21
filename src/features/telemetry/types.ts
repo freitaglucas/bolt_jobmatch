@@ -1,6 +1,12 @@
 import { Json } from '../../shared/types/database';
 
-export type TelemetryEventType = 'score_seen' | 'swipe_decision' | 'application_submitted';
+export type TelemetryEventType =
+  | 'score_seen'
+  | 'swipe_decision'
+  | 'application_submitted'
+  | 'job_viewed'
+  | 'profile_started'
+  | 'profile_completed';
 
 export interface EventLog {
   id: string;
