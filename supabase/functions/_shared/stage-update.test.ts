@@ -68,19 +68,26 @@ describe('renderStageUpdateEmail', () => {
 
   it('says the new stage, the job and the next return date', () => {
     const email = renderStageUpdateEmail(base);
-    expect(email.subject).toBe('Você avançou no processo: Analista de Dados');
+    expect(email.subject).toBe('Você avançou no processo: Analista de Dados · Próximo retorno até 20/10');
     expect(email.text).toContain('Olá, Maria!');
-    expect(email.text).toContain(
-      'Você avançou para a etapa Entrevista da vaga Analista de Dados. Próximo retorno até 20/10/2026.',
-    );
-    expect(email.text).toContain('Aviso automático enviado por Acme pelo Job Match');
-    expect(email.html).toContain('Próximo retorno até 20/10/2026.');
+    expect(email.text).toContain('Você avançou no processo da vaga Analista de Dados.');
+    expect(email.text).toContain('Você chegou à etapa Entrevista\nPróximo retorno até 20/10');
+    expect(email.text).toContain('na empresa Acme');
+    expect(email.html).toContain('Próximo retorno até <strong>20/10</strong>');
+    expect(email.html).not.toContain('Ver minha candidatura');
+  });
+
+  it('adds the "Ver minha candidatura" button when APP_URL is set', () => {
+    const email = renderStageUpdateEmail({ ...base, appUrl: 'https://jobmatchrh.com' });
+    expect(email.html).toContain('href="https://jobmatchrh.com/?tela=candidaturas"');
+    expect(email.text).toContain('Ver minha candidatura: https://jobmatchrh.com/?tela=candidaturas');
   });
 
   it('drops the date sentence when there is no open deadline, and the name when unknown', () => {
     const email = renderStageUpdateEmail({ ...base, dueAt: null, candidateName: null });
     expect(email.text).toContain('Olá!');
     expect(email.text).not.toContain('Próximo retorno');
+    expect(email.subject).toBe('Você avançou no processo: Analista de Dados');
   });
 
   it('escapes the job title in the html and never carries a score', () => {
@@ -156,6 +163,14 @@ describe('processStageUpdate', () => {
       error: 'email_failed',
     });
     expect(deps.finishLog).toHaveBeenCalledWith('log-1', { status: 'failed', error: 'timeout' });
+  });
+
+  it('signs as "<Nome>, da <Empresa> via Job Match" when the recruiter has a name (N74)', async () => {
+    const deps = makeDeps();
+    await processStageUpdate(deps, { ...CONTEXT, recruiterName: 'Ana Lima' }, APP);
+    const payload = vi.mocked(deps.send).mock.calls[0]?.[0];
+    expect(payload?.from).toBe('"Ana, da Acme via Job Match" <avisos@mail.jobmatchrh.com>');
+    expect(payload?.reply_to).toBe('recruiter@acme.com');
   });
 
   it('omits Reply-To when the recruiter e-mail is not valid', async () => {

@@ -28,6 +28,17 @@ Envia e-mail transacional pelo Resend. Templates:
   mesma candidatura e etapa. Limite proprio: 300 por hora por recrutador. A tela chama
   so depois de mudar a etapa; falha no e-mail nao desfaz a mudanca.
 
+Layout (N74): os e-mails ao candidato (`batch_feedback` e `stage_update`) usam
+`_shared/email-layout.ts`: largura maxima de 600px, cabecalho "Job Match" com o nome
+da empresa, bloco com a etapa ("Voce chegou a etapa Entrevista") e "Proximo retorno
+ate DD/MM", botao "Ver minha candidatura" (abre o app em Candidaturas pelo link
+`<APP_URL>/?tela=candidaturas`) e rodape "Voce recebeu este e-mail porque se
+candidatou a vaga X na empresa Y". O assunto leva o prazo quando houver. Todo
+e-mail tem versao texto equivalente. O remetente e "<Nome>, da <Empresa> via Job
+Match" quando o recrutador tem nome no perfil (senao "<Empresa> via Job Match"),
+sempre com Reply-To do recrutador. O layout aceita um bloco opcional de citacao
+(frase do gestor), que so sera preenchido a partir do N85.
+
 O template de aviso a equipe (6.5) entra depois.
 
 ## Segredos (Supabase, Edge Functions > Secrets)
@@ -35,6 +46,11 @@ O template de aviso a equipe (6.5) entra depois.
 - `EMAIL_FROM` (opcional): remetente, ex.: `Job Match <avisos@seudominio.com.br>`.
   Sem ela, usa `Job Match <onboarding@resend.dev>`, que so entrega para o e-mail
   da conta do Resend.
+- `APP_URL` (opcional, N74): endereco de producao do app, ex.: `https://jobmatchrh.com`
+  (https, sem barra no fim). Usada no botao "Ver minha candidatura". Sem ela, ou
+  com valor invalido, o e-mail sai sem o botao e nada quebra.
+
+      npx supabase secrets set APP_URL=https://SEU_DOMINIO --project-ref SEU_PROJECT_REF
 
 ## Deploy
     npx supabase login

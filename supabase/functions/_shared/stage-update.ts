@@ -3,11 +3,16 @@
 // montado aqui (sem texto livre) e o e-mail sai como "<Empresa> via Job Match".
 import { buildFromHeader, type LogResult } from './batch-feedback.ts';
 import {
-  escapeHtml,
   isValidEmail,
   type RenderedEmail,
   type ResendPayload,
 } from './email-core.ts';
+import {
+  firstName,
+  renderCandidateEmail,
+  singleLine,
+  subjectWithDue,
+} from './email-layout.ts';
 
 // Teto de seguranca por recrutador, por hora.
 export const MAX_STAGE_UPDATES_PER_HOUR = 300;
@@ -27,43 +32,35 @@ export function parseStageUpdateRequest(raw: unknown): string | null {
   return typeof raw === 'string' && UUID_RE.test(raw) ? raw.toLowerCase() : null;
 }
 
-function singleLine(value: string, maxLength: number): string {
-  return value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
-}
-
-function firstName(fullName: string | null): string {
-  return singleLine(fullName ?? '', 80).split(' ')[0] ?? '';
-}
-
 // dd/mm/aaaa no fuso de Sao Paulo (o prazo e o dia que o candidato ve).
 export function formatNoticeDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
+// Aviso de etapa no layout padrao: frase curta + bloco "Você chegou à etapa X" e
+// "Próximo retorno até dd/mm" (quando houver prazo aberto) + botao.
 export function renderStageUpdateEmail(input: {
   candidateName: string | null;
   companyName: string | null;
   jobTitle: string;
   stageLabel: string;
   dueAt: string | null;
+  appUrl?: string | null;
 }): RenderedEmail {
-  const company = singleLine(input.companyName ?? '', 80) || 'a empresa';
   const job = singleLine(input.jobTitle, 120) || 'vaga';
   const name = firstName(input.candidateName);
   const greeting = name ? `Olá, ${name}!` : 'Olá!';
-  const dueDate = input.dueAt && !Number.isNaN(new Date(input.dueAt).getTime())
-    ? formatNoticeDate(input.dueAt)
-    : null;
-  const body =
-    `Você avançou para a etapa ${input.stageLabel} da vaga ${job}.` +
-    (dueDate ? ` Próximo retorno até ${dueDate}.` : '');
-  const footer = `Aviso automático enviado por ${company} pelo Job Match, plataforma onde você se candidatou à vaga "${job}". Você pode responder a este e-mail para falar com a empresa.`;
+  const body = `${greeting}\n\nVocê avançou no processo da vaga ${job}.`;
 
-  return {
-    subject: `Você avançou no processo: ${job}`,
-    html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1f2937"><p style="margin:0 0 14px 0">${escapeHtml(greeting)}</p><p style="margin:0 0 14px 0">${escapeHtml(body)}</p><p style="margin:24px 0 0 0;font-size:12px;color:#6b7280">${escapeHtml(footer)}</p></div>`,
-    text: `${greeting}\n\n${body}\n\n--\n${footer}`,
-  };
+  return renderCandidateEmail({
+    subject: subjectWithDue(`Você avançou no processo: ${job}`, input.dueAt),
+    companyName: input.companyName,
+    jobTitle: input.jobTitle,
+    body,
+    stageLine: `Você chegou à etapa ${input.stageLabel}`,
+    dueAt: input.dueAt,
+    appUrl: input.appUrl ?? null,
+  });
 }
 
 export interface StageUpdateApplication {
@@ -96,6 +93,9 @@ export interface StageUpdateContext {
   recruiterId: string;
   recruiterEmail: string | null;
   from: string;
+  // Nome do recrutador no remetente (N74) e APP_URL do botao; opcionais.
+  recruiterName?: string | null;
+  appUrl?: string | null;
 }
 
 export type StageUpdateStatus = 'sent' | 'failed' | 'skipped_duplicate' | 'skipped';
@@ -148,9 +148,10 @@ export async function processStageUpdate(
       jobTitle: application.jobTitle,
       stageLabel,
       dueAt: await deps.loadOpenDueAt(applicationId),
+      appUrl: context.appUrl ?? null,
     });
     const result = await deps.send({
-      from: buildFromHeader(context.from, application.companyName),
+      from: buildFromHeader(context.from, application.companyName, context.recruiterName ?? null),
       to: [toEmail],
       subject: email.subject,
       html: email.html,

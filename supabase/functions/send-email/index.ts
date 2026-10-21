@@ -2,6 +2,7 @@
 //  - template "test" (N17): e-mail de teste ao proprio recrutador.
 //  - template "batch_feedback" (N15a): retorno em lote ao candidato (gratis, sem token).
 //  - template "stage_update" (N71): aviso automatico de mudanca de etapa (gratis, sem texto livre).
+// Os e-mails ao candidato usam o layout de _shared/email-layout.ts (N74).
 // Deploy: npx supabase functions deploy send-email --no-verify-jwt --use-api --project-ref <ref>
 // A verificacao do usuario e feita aqui dentro (auth.getUser), por isso o
 // gateway fica sem verify_jwt. Veja o README desta pasta.
@@ -62,6 +63,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const resendKey = Deno.env.get('RESEND_API_KEY');
   const from = Deno.env.get('EMAIL_FROM') ?? DEFAULT_FROM;
+  // Opcional (N74): sem APP_URL o e-mail ao candidato sai sem o botao.
+  const appUrl = Deno.env.get('APP_URL') ?? null;
 
   if (!supabaseUrl || !anonKey || !serviceKey || !resendKey) {
     return reply(500, { error: 'not_configured' });
@@ -109,6 +112,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
   }
   const template = body.template;
   const since = new Date(Date.now() - 3_600_000).toISOString();
+
+  // Nome do recrutador no remetente dos e-mails ao candidato (N74). Sem nome, fica "<Empresa> via Job Match".
+  async function loadRecruiterName(): Promise<string | null> {
+    const { data } = await admin.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
+    const fromProfile = typeof data?.full_name === 'string' ? data.full_name : null;
+    const fromMetadata =
+      typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : null;
+    return fromProfile ?? fromMetadata;
+  }
 
   // ---------- Retorno em lote ao candidato (N15a) ----------
   if (template === 'batch_feedback') {
@@ -247,6 +259,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
         recruiterEmail: user.email ?? null,
         from,
         quota: Math.max(0, MAX_BATCH_EMAILS_PER_HOUR - (batchCount ?? 0)),
+        recruiterName: await loadRecruiterName(),
+        appUrl,
       },
       parsed.items,
       parsed.rejected,
@@ -363,7 +377,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const notice = await processStageUpdate(
       noticeDeps,
-      { recruiterId: user.id, recruiterEmail: user.email ?? null, from },
+      {
+        recruiterId: user.id,
+        recruiterEmail: user.email ?? null,
+        from,
+        recruiterName: await loadRecruiterName(),
+        appUrl,
+      },
       applicationId,
     );
     return reply(200, notice as unknown as Record<string, unknown>);

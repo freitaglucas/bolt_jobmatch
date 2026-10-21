@@ -2,11 +2,20 @@
 // As regras puras (validacao, remetente, texto do e-mail) e a orquestracao do
 // lote ficam aqui; o index.ts da send-email so liga as dependencias reais.
 import {
-  escapeHtml,
   isValidEmail,
   type RenderedEmail,
   type ResendPayload,
 } from './email-core.ts';
+import {
+  NEXT_STAGE,
+  STAGE_LABELS,
+  defaultDueAt,
+  firstName,
+  reachedStageLine,
+  renderCandidateEmail,
+  singleLine,
+  subjectWithDue,
+} from './email-layout.ts';
 
 export const MAX_BATCH_ITEMS = 25;
 export const MIN_MESSAGE_LENGTH = 10;
@@ -159,56 +168,89 @@ export function parseBatchItems(raw: unknown): ParseResult {
   return { ok: true, items, rejected };
 }
 
-function singleLine(value: string, maxLength: number): string {
-  return value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+function headerName(value: string | null | undefined, maxLength: number): string {
+  return singleLine((value ?? '').replace(/["<>@,;:\\]/g, ''), maxLength);
 }
 
-// Remetente "<Empresa> via Job Match <avisos@dominio>". O endereco vem do
-// EMAIL_FROM configurado; o nome de exibicao e limpo para nao quebrar o cabecalho.
-export function buildFromHeader(configuredFrom: string, companyName: string | null): string {
+// Remetente "<Nome>, da <Empresa> via Job Match <avisos@dominio>". O endereco vem
+// do EMAIL_FROM configurado; nome e empresa sao limpos para nao quebrar o cabecalho.
+// Sem nome do recrutador: "<Empresa> via Job Match". Sem os dois: "Job Match".
+export function buildFromHeader(
+  configuredFrom: string,
+  companyName: string | null,
+  recruiterName: string | null = null,
+): string {
   const match = /<([^>]+)>/.exec(configuredFrom);
   const address = (match?.[1] ?? configuredFrom).trim();
   if (!isValidEmail(address)) {
     return configuredFrom;
   }
-  const company = singleLine((companyName ?? '').replace(/["<>@,;:\\]/g, ''), 60);
-  const display = company ? `${company} via Job Match` : 'Job Match';
+  const company = headerName(companyName, 60);
+  const person = headerName(firstName(recruiterName), 40);
+  let display = 'Job Match';
+  if (person && company) {
+    display = `${person}, da ${company} via Job Match`;
+  } else if (company) {
+    display = `${company} via Job Match`;
+  } else if (person) {
+    display = `${person} via Job Match`;
+  }
   return `"${display}" <${address}>`;
 }
 
-function toParagraphsHtml(message: string): string {
-  return message
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0)
-    .map(
-      (block) =>
-        `<p style="margin:0 0 14px 0">${escapeHtml(block).replace(/\n/g, '<br>')}</p>`,
-    )
-    .join('');
+// Bloco de status do retorno em lote (sem dado de score):
+//  - atualizacao: etapa atual + nova data;
+//  - avancou (decisao sem motivo): etapa seguinte + prazo padrao de 5 dias;
+//  - nao avancou (decisao com motivo): etapa que o candidato alcancou, sem prazo.
+export function batchStatus(input: {
+  kind: FeedbackKind;
+  stage: string;
+  reasonCode: ReasonCode | null;
+  newDueAt: string | null;
+  now: Date;
+}): { stageLine: string | null; dueAt: string | null } {
+  if (input.kind === 'update') {
+    const label = STAGE_LABELS[input.stage];
+    return {
+      stageLine: label ? `Etapa atual: ${label}` : null,
+      dueAt: input.newDueAt,
+    };
+  }
+  if (input.reasonCode) {
+    return { stageLine: reachedStageLine(input.stage), dueAt: null };
+  }
+  const next = NEXT_STAGE[input.stage];
+  if (!next) {
+    return { stageLine: null, dueAt: null };
+  }
+  return { stageLine: reachedStageLine(next), dueAt: defaultDueAt(input.now) };
 }
 
 // E-mail do retorno em lote. O texto vem pronto da tela (cada candidato tem a
-// propria mensagem); aqui so se acrescenta o rodape.
+// propria mensagem); aqui entram o layout, o bloco de status e o rodape.
 export function renderBatchFeedbackEmail(input: {
   kind: FeedbackKind;
   companyName: string | null;
   jobTitle: string;
   message: string;
+  stageLine?: string | null;
+  dueAt?: string | null;
+  appUrl?: string | null;
 }): RenderedEmail {
-  const company = singleLine(input.companyName ?? '', 80) || 'a empresa';
   const job = singleLine(input.jobTitle, 120) || 'vaga';
-  const subject =
+  const base =
     input.kind === 'update'
       ? `Atualização sobre a sua candidatura: ${job}`
       : `Retorno sobre a sua candidatura: ${job}`;
-  const footer = `Mensagem enviada por ${company} pelo Job Match, plataforma onde você se candidatou à vaga "${job}". Você pode responder a este e-mail para falar com a empresa.`;
-
-  return {
-    subject,
-    html: `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1f2937">${toParagraphsHtml(input.message)}<p style="margin:24px 0 0 0;font-size:12px;color:#6b7280">${escapeHtml(footer)}</p></div>`,
-    text: `${input.message}\n\n--\n${footer}`,
-  };
+  return renderCandidateEmail({
+    subject: subjectWithDue(base, input.dueAt),
+    companyName: input.companyName,
+    jobTitle: input.jobTitle,
+    body: input.message,
+    stageLine: input.stageLine ?? null,
+    dueAt: input.dueAt ?? null,
+    appUrl: input.appUrl ?? null,
+  });
 }
 
 export interface ApplicationInfo {
@@ -251,6 +293,10 @@ export interface BatchContext {
   from: string;
   // Quantos envios ainda cabem na hora (MAX_BATCH_EMAILS_PER_HOUR menos o ja enviado).
   quota: number;
+  // Nome do recrutador no remetente (N74) e APP_URL do botao; opcionais.
+  recruiterName?: string | null;
+  appUrl?: string | null;
+  now?: Date;
 }
 
 function errorText(error: unknown): string {
@@ -335,14 +381,24 @@ export async function processBatch(
     }
 
     try {
+      const status = batchStatus({
+        kind: item.kind,
+        stage: application.stage,
+        reasonCode: item.reasonCode,
+        newDueAt: item.newDueAt,
+        now: context.now ?? new Date(),
+      });
       const email = renderBatchFeedbackEmail({
         kind: item.kind,
         companyName: application.companyName,
         jobTitle: application.jobTitle,
         message: item.message,
+        stageLine: status.stageLine,
+        dueAt: status.dueAt,
+        appUrl: context.appUrl ?? null,
       });
       const result = await deps.send({
-        from: buildFromHeader(context.from, application.companyName),
+        from: buildFromHeader(context.from, application.companyName, context.recruiterName ?? null),
         to: [toEmail],
         subject: email.subject,
         html: email.html,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Layout, type Screen } from '@/components/Layout';
 import { Landing } from '@/screens/Landing';
@@ -25,6 +25,7 @@ import { RecruiterOnboardingGate } from '@/features/recruiters/components/Recrui
 import { createApplication } from '@/features/applications/api';
 import { APP_NAME, screenTitle } from '@/lib/screen-title';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
+import { readDeepLinkScreen, stripDeepLinkParam } from '@/lib/deep-link';
 
 type AppState = 'landing' | 'auth' | 'app';
 
@@ -40,6 +41,18 @@ function App() {
   const { toast } = useToast();
   const auth = useAuth();
   const isResetPasswordRoute = window.location.pathname === '/reset-password';
+  // Link do e-mail ao candidato (N74): "?tela=candidaturas" abre Candidaturas apos o login.
+  const deepLinkRef = useRef<Screen | null>(readDeepLinkScreen(window.location.search));
+
+  useEffect(() => {
+    if (deepLinkRef.current) {
+      const { pathname, search, hash } = window.location;
+      window.history.replaceState(null, '', stripDeepLinkParam(pathname, search, hash));
+    }
+  }, []);
+
+  const startScreen = (r: Role): Screen =>
+    r === 'recruiter' ? 'dashboard' : (deepLinkRef.current ?? 'swipe');
 
   useEffect(() => {
     document.title = appState === 'app' ? screenTitle(screen) : APP_NAME;
@@ -54,7 +67,7 @@ function App() {
     }
     if (auth.user.role) {
       setRole(auth.user.role);
-      setScreen(auth.user.role === 'recruiter' ? 'dashboard' : 'swipe');
+      setScreen(startScreen(auth.user.role));
       setAppState('app');
     } else {
       setAppState('auth');
@@ -75,13 +88,14 @@ function App() {
 
   const handleAuth = (r: Role) => {
     setRole(r);
-    setScreen(r === 'candidate' ? 'swipe' : 'dashboard');
+    setScreen(startScreen(r));
     setAppState('app');
   };
 
   const handleLogout = async () => {
     try {
       await auth.signOut();
+      deepLinkRef.current = null;
       setAppState('landing');
       setSelectedJob(null);
       setAppliedJobIds(new Set());

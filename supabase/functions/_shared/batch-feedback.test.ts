@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_BATCH_ITEMS,
+  batchStatus,
   buildFromHeader,
   parseBatchItems,
   processBatch,
@@ -125,6 +126,57 @@ describe('buildFromHeader', () => {
   it('returns the configured value when it has no valid address', () => {
     expect(buildFromHeader('Job Match', 'Acme')).toBe('Job Match');
   });
+
+  it('puts the recruiter first name before the company (N74)', () => {
+    expect(buildFromHeader('Job Match <a@b.co>', 'Acme', 'Ana Paula Lima')).toBe(
+      '"Ana, da Acme via Job Match" <a@b.co>',
+    );
+    expect(buildFromHeader('Job Match <a@b.co>', null, 'Ana')).toBe('"Ana via Job Match" <a@b.co>');
+    expect(buildFromHeader('Job Match <a@b.co>', 'Acme', '  ')).toBe('"Acme via Job Match" <a@b.co>');
+    expect(buildFromHeader('Job Match <a@b.co>', 'Acme', 'An"a<x@y>')).toBe(
+      '"Anaxy, da Acme via Job Match" <a@b.co>',
+    );
+  });
+});
+
+describe('batchStatus', () => {
+  const now = new Date('2026-10-21T15:00:00Z');
+
+  it('honest update: current stage and the new date', () => {
+    expect(
+      batchStatus({
+        kind: 'update',
+        stage: 'interview',
+        reasonCode: null,
+        newDueAt: '2026-10-25T21:00:00.000Z',
+        now,
+      }),
+    ).toEqual({ stageLine: 'Etapa atual: Entrevista', dueAt: '2026-10-25T21:00:00.000Z' });
+  });
+
+  it('did not advance: the stage the candidate reached, without a deadline', () => {
+    expect(
+      batchStatus({ kind: 'decision', stage: 'interview', reasonCode: 'better_fit', newDueAt: null, now }),
+    ).toEqual({ stageLine: 'Você chegou à etapa Entrevista', dueAt: null });
+    expect(
+      batchStatus({
+        kind: 'decision',
+        stage: 'new_application',
+        reasonCode: 'missing_required',
+        newDueAt: null,
+        now,
+      }),
+    ).toEqual({ stageLine: null, dueAt: null });
+  });
+
+  it('advanced: next stage and the default 5-day deadline', () => {
+    expect(
+      batchStatus({ kind: 'decision', stage: 'screening', reasonCode: null, newDueAt: null, now }),
+    ).toEqual({ stageLine: 'Você chegou à etapa Entrevista', dueAt: '2026-10-26T15:00:00.000Z' });
+    expect(
+      batchStatus({ kind: 'decision', stage: 'final_interview', reasonCode: null, newDueAt: null, now }),
+    ).toEqual({ stageLine: null, dueAt: null });
+  });
 });
 
 describe('renderBatchFeedbackEmail', () => {
@@ -139,9 +191,30 @@ describe('renderBatchFeedbackEmail', () => {
     expect(email.html).toContain('Olá &lt;b&gt;Ana&lt;/b&gt;<br>linha 2');
     expect(email.html).toContain('Segundo parágrafo</p>');
     expect(email.html).not.toContain('<b>Ana</b>');
-    expect(email.html).toContain('Mensagem enviada por Acme pelo Job Match');
+    expect(email.html).toContain(
+      'Você recebeu este e-mail porque se candidatou à vaga &quot;Analista &lt;Dados&gt;&quot; na empresa Acme',
+    );
     expect(email.text).toContain('Olá <b>Ana</b>');
-    expect(email.text).toContain('--\nMensagem enviada por Acme');
+    expect(email.text).toContain(
+      '--\nVocê recebeu este e-mail porque se candidatou à vaga "Analista <Dados>" na empresa Acme',
+    );
+  });
+
+  it('shows the stage block, the deadline in the subject and the button', () => {
+    const email = renderBatchFeedbackEmail({
+      kind: 'decision',
+      companyName: 'Acme',
+      jobTitle: 'Dev',
+      message: 'Você avançou para a etapa Entrevista.',
+      stageLine: 'Você chegou à etapa Entrevista',
+      dueAt: '2026-10-26T15:00:00.000Z',
+      appUrl: 'https://jobmatchrh.com/',
+    });
+    expect(email.subject).toBe('Retorno sobre a sua candidatura: Dev · Próximo retorno até 26/10');
+    expect(email.html).toContain('Você chegou à etapa Entrevista');
+    expect(email.html).toContain('Próximo retorno até <strong>26/10</strong>');
+    expect(email.html).toContain('href="https://jobmatchrh.com/?tela=candidaturas"');
+    expect(email.text).toContain('Ver minha candidatura: https://jobmatchrh.com/?tela=candidaturas');
   });
 
   it('uses another subject for the honest update', () => {
@@ -152,7 +225,8 @@ describe('renderBatchFeedbackEmail', () => {
       message: 'Seguimos analisando.',
     });
     expect(email.subject).toBe('Atualização sobre a sua candidatura: Dev');
-    expect(email.text).toContain('Mensagem enviada por a empresa');
+    expect(email.text).toContain('Você recebeu este e-mail porque se candidatou à vaga "Dev", pelo Job Match.');
+    expect(email.text).not.toContain('Ver minha candidatura');
   });
 });
 
@@ -195,6 +269,7 @@ const CONTEXT = {
   recruiterEmail: 'rec@acme.com',
   from: 'Job Match <avisos@mail.jobmatchrh.com>',
   quota: 100,
+  now: new Date('2026-10-21T15:00:00Z'),
 };
 
 describe('processBatch', () => {
@@ -235,6 +310,26 @@ describe('processBatch', () => {
       newDueAt: '2026-10-20T12:00:00.000Z',
     });
     expect(deps.recordDecision).not.toHaveBeenCalled();
+    const payload = deps.send.mock.calls[0]?.[0];
+    expect(payload?.subject).toBe(
+      'Atualização sobre a sua candidatura: Analista de Dados · Próximo retorno até 20/10',
+    );
+    expect(payload?.text).toContain('Etapa atual: Triagem');
+  });
+
+  it('puts the recruiter name in the sender and the stage reached in the e-mail (N74)', async () => {
+    const deps = makeDeps();
+    await processBatch(
+      deps,
+      { ...CONTEXT, recruiterName: 'Ana Lima', appUrl: 'https://jobmatchrh.com' },
+      [item()],
+    );
+    const payload = deps.send.mock.calls[0]?.[0];
+    expect(payload?.from).toBe('"Ana, da Acme via Job Match" <avisos@mail.jobmatchrh.com>');
+    expect(payload?.reply_to).toBe('rec@acme.com');
+    expect(payload?.text).toContain('Você chegou à etapa Triagem');
+    expect(payload?.text).not.toContain('Próximo retorno');
+    expect(payload?.html).toContain('href="https://jobmatchrh.com/?tela=candidaturas"');
   });
 
   it('does not send twice for a decision that was already sent', async () => {
