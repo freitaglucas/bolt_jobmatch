@@ -24,3 +24,7 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Bolt e cache do TypeScript
+.bolt/
+*.tsbuildinfo
