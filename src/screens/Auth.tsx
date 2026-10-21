@@ -19,11 +19,25 @@ interface AuthProps {
   onLogin: (role: Role) => void;
   onBack: () => void;
   darkMode: boolean;
+  // Papel e modo escolhidos na Landing (ex.: "Sou empresa" abre o cadastro da empresa).
+  initialRole?: Role;
+  initialMode?: 'login' | 'signup';
 }
 
-export function Auth({ onLogin, onBack }: AuthProps) {
-  const [role, setRole] = useState<Role>('candidate');
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+const SIGNUP_SUBTITLE: Record<Role, string> = {
+  candidate: 'Cadastre suas competências e veja a compatibilidade com cada vaga.',
+  recruiter:
+    'Depois do cadastro, seu acesso passa por uma aprovação e você informa os dados da empresa.',
+};
+
+export function Auth({
+  onLogin,
+  onBack,
+  initialRole = 'candidate',
+  initialMode = 'login',
+}: AuthProps) {
+  const [role, setRole] = useState<Role>(initialRole);
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -192,14 +206,23 @@ export function Auth({ onLogin, onBack }: AuthProps) {
           <Card className="border-border bg-card/50 backdrop-blur-sm">
             <CardContent className="p-8">
               <h1 className="text-2xl font-bold text-center mb-2">
-                {mode === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
+                {mode === 'login'
+                  ? 'Bem-vindo de volta'
+                  : role === 'recruiter'
+                    ? 'Crie a conta da sua empresa'
+                    : 'Crie sua conta de candidato'}
               </h1>
               <p className="text-sm text-muted-foreground text-center mb-6">
-                {mode === 'login' ? 'Entre para continuar' : 'Comece sua jornada'}
+                {mode === 'login' ? 'Entre para continuar' : SIGNUP_SUBTITLE[role]}
               </p>
 
-              {/* Role toggle */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6">
+              {/* Role toggle: so no cadastro (no login o papel vem da conta) */}
+              <div
+                className={cn(
+                  'grid grid-cols-2 gap-2 p-1 bg-muted rounded-xl mb-6',
+                  mode === 'login' && 'hidden',
+                )}
+              >
                 <button
                   type="button"
                   onClick={() => setRole('candidate')}

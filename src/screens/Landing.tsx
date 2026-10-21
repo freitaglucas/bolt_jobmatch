@@ -3,58 +3,61 @@ import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Moon,
-  Sun,
-  Target,
-  Heart,
-  FileCheck,
-  Coins,
   ArrowRight,
-  Users,
+  BadgeCheck,
   Briefcase,
+  CalendarClock,
+  Hourglass,
+  MessageSquare,
+  Moon,
   Sparkles,
+  Sun,
+  Users,
 } from 'lucide-react';
+import {
+  CANDIDATE_STEPS,
+  COMPANY_STEPS,
+  HERO_SUBTITLE,
+  HERO_TITLE,
+  RETURN_POINTS,
+} from '@/features/landing/content';
+
+export type LandingRole = 'candidate' | 'recruiter';
+export type LandingAuthMode = 'login' | 'signup';
 
 interface LandingProps {
-  onAuth: (role: 'candidate' | 'recruiter') => void;
+  onAuth: (role: LandingRole, mode: LandingAuthMode) => void;
   darkMode: boolean;
   onToggleDark: () => void;
 }
 
-const pillars = [
-  {
-    icon: Target,
-    title: 'Competências Reais',
-    description:
-      'Mapeamos o que você realmente sabe fazer, não apenas diplomas. Skills com níveis validados por projetos.',
-    color: 'text-jm-purple',
-    bgColor: 'bg-jm-purple/10',
-  },
-  {
-    icon: Heart,
-    title: 'Swipe + Match Score',
-    description:
-      'Navegue vagas em segundos. Veja sua compatibilidade antes de se candidatar, com score de 0 a 100%.',
-    color: 'text-jm-teal',
-    bgColor: 'bg-jm-teal/10',
-  },
-  {
-    icon: FileCheck,
-    title: 'Evidência, não currículo',
-    description:
-      'Projetos, entregas e resultados falam mais alto. O candidato prova, o recrutador confere.',
-    color: 'text-jm-orange',
-    bgColor: 'bg-jm-orange/10',
-  },
-  {
-    icon: Coins,
-    title: 'Jornada com Tokens',
-    description:
-      'Recrutadores ganham tokens por boas contratações. Gamificação que premia qualidade sobre quantidade.',
-    color: 'text-jm-purple',
-    bgColor: 'bg-jm-purple/10',
-  },
+const RETURN_ICONS = [CalendarClock, Hourglass, MessageSquare, BadgeCheck];
+const RETURN_COLORS = [
+  { color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
+  { color: 'text-jm-orange', bg: 'bg-jm-orange/10' },
+  { color: 'text-jm-purple', bg: 'bg-jm-purple/10' },
+  { color: 'text-jm-teal', bg: 'bg-jm-teal/10' },
 ];
+
+function StepList({ steps, accent }: { steps: string[]; accent: 'purple' | 'teal' }) {
+  const badge =
+    accent === 'purple' ? 'bg-jm-purple/15 text-jm-purple' : 'bg-jm-teal/15 text-jm-teal';
+  return (
+    <ol className="space-y-5">
+      {steps.map((step, i) => (
+        <li key={step} className="flex items-start gap-4">
+          <div
+            className={`w-8 h-8 rounded-full ${badge} flex items-center justify-center text-sm font-bold shrink-0`}
+            aria-hidden="true"
+          >
+            {i + 1}
+          </div>
+          <p className="text-muted-foreground pt-1">{step}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
   return (
@@ -69,21 +72,18 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
               size="icon"
               onClick={onToggleDark}
               className="rounded-lg"
+              aria-label={darkMode ? 'Usar tema claro' : 'Usar tema escuro'}
             >
               {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => onAuth('candidate')}
-              className="hidden sm:inline-flex"
-            >
-              Entrar como candidato
+            <Button variant="ghost" onClick={() => onAuth('candidate', 'login')}>
+              Entrar
             </Button>
             <Button
-              onClick={() => onAuth('recruiter')}
+              onClick={() => onAuth('recruiter', 'signup')}
               className="bg-gradient-purple-teal text-white border-0 hover:opacity-90"
             >
-              Sou recrutador
+              Sou empresa
             </Button>
           </div>
         </div>
@@ -103,159 +103,152 @@ export function Landing({ onAuth, darkMode, onToggleDark }: LandingProps) {
           >
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary mb-6">
               <Sparkles className="h-4 w-4" />
-              O novo jeito de conectar talentos e vagas
+              Retorno no prazo, com motivo
             </div>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight mb-6">
-              Encontre o <span className="text-gradient-purple-teal">match perfeito</span>
-              <br />
-              entre talentos e vagas.
+              {HERO_TITLE}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              Match Score baseado em competências reais. Swipe para candidatos,
-              pipeline inteligente para recrutadores. Sem fricção, com evidência.
+              {HERO_SUBTITLE}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
-                onClick={() => onAuth('candidate')}
+                onClick={() => onAuth('candidate', 'signup')}
                 className="bg-gradient-purple-teal text-white border-0 hover:opacity-90 w-full sm:w-auto"
               >
                 <Users className="h-5 w-5 mr-2" />
-                Sou candidato
+                Procuro vaga
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => onAuth('recruiter')}
+                onClick={() => onAuth('recruiter', 'signup')}
                 className="w-full sm:w-auto"
               >
                 <Briefcase className="h-5 w-5 mr-2" />
-                Sou recrutador
+                Sou empresa
               </Button>
             </div>
+            <p className="text-sm text-muted-foreground mt-6">
+              Já tem conta?{' '}
+              <button
+                type="button"
+                onClick={() => onAuth('candidate', 'login')}
+                className="text-primary hover:underline"
+              >
+                Entrar
+              </button>
+            </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Pillars */}
-      <section className="max-w-7xl mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">4 pilares que nos diferenciam</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Não é mais um portal de vagas. É uma plataforma construída para matches reais.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {pillars.map((pillar, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <Card className="h-full border-border hover:border-primary/30 transition-all hover:glow-purple">
-                <CardContent className="p-6">
-                  <div className={`w-12 h-12 rounded-xl ${pillar.bgColor} flex items-center justify-center mb-4`}>
-                    <pillar.icon className={`h-6 w-6 ${pillar.color}`} />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{pillar.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {pillar.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
+      {/* Como usar, por lado */}
       <section className="bg-card/50 border-y border-border py-20">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Como funciona</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Como usar</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Cada lado tem o seu caminho. Quatro passos para começar.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Users className="h-6 w-6 text-jm-purple" />
-                <h3 className="text-xl font-semibold">Para candidatos</h3>
-              </div>
-              {[
-                'Cadastre suas competências com nível e projetos',
-                'Navegue vagas com swipe e veja o Match Score',
-                'Candidate-se apenas às vagas com bom fit',
-                'Acompanhe o status em tempo real',
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-jm-purple/15 text-jm-purple flex items-center justify-center text-sm font-bold shrink-0">
-                    {i + 1}
-                  </div>
-                  <p className="text-muted-foreground pt-1">{step}</p>
+            <Card className="border-border">
+              <CardContent className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Users className="h-6 w-6 text-jm-purple" aria-hidden="true" />
+                  <h3 className="text-xl font-semibold">Para quem procura vaga</h3>
                 </div>
-              ))}
-            </div>
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Briefcase className="h-6 w-6 text-jm-teal" />
-                <h3 className="text-xl font-semibold">Para recrutadores</h3>
-              </div>
-              {[
-                'Publique vagas com competências exigidas',
-                'Receba candidatos ordenados por Match Score',
-                'Gerencie o pipeline com drag & drop',
-                'Ganhe tokens por contratações de qualidade',
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-jm-teal/15 text-jm-teal flex items-center justify-center text-sm font-bold shrink-0">
-                    {i + 1}
-                  </div>
-                  <p className="text-muted-foreground pt-1">{step}</p>
+                <StepList steps={CANDIDATE_STEPS} accent="purple" />
+                <Button
+                  onClick={() => onAuth('candidate', 'signup')}
+                  className="w-full sm:w-auto bg-gradient-purple-teal text-white border-0 hover:opacity-90"
+                >
+                  Criar conta de candidato
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+            <Card className="border-border">
+              <CardContent className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <Briefcase className="h-6 w-6 text-jm-teal" aria-hidden="true" />
+                  <h3 className="text-xl font-semibold">Para empresas</h3>
                 </div>
-              ))}
-            </div>
+                <StepList steps={COMPANY_STEPS} accent="teal" />
+                <Button
+                  variant="outline"
+                  onClick={() => onAuth('recruiter', 'signup')}
+                  className="w-full sm:w-auto"
+                >
+                  Criar conta da empresa
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
           </div>
+        </div>
+      </section>
+
+      {/* O retorno no prazo, explicado */}
+      <section className="max-w-7xl mx-auto px-4 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">O retorno no prazo, explicado</h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            É a regra central do Job Match: quem se candidata sabe quando vai ter notícias.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {RETURN_POINTS.map((point, i) => {
+            const Icon = RETURN_ICONS[i % RETURN_ICONS.length];
+            const tone = RETURN_COLORS[i % RETURN_COLORS.length];
+            return (
+              <Card key={point.title} className="h-full border-border">
+                <CardContent className="p-6">
+                  <div
+                    className={`w-12 h-12 rounded-xl ${tone.bg} flex items-center justify-center mb-4`}
+                  >
+                    <Icon className={`h-6 w-6 ${tone.color}`} aria-hidden="true" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{point.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{point.text}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="relative inline-block">
-            <div className="absolute inset-0 bg-gradient-purple-teal blur-[60px] opacity-20" />
-            <h2 className="relative text-3xl md:text-4xl font-bold mb-4">
-              Pronto para começar?
-            </h2>
-          </div>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Escolha seu perfil para começar.
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              onClick={() => onAuth('candidate')}
-              className="bg-gradient-purple-teal text-white border-0 hover:opacity-90 w-full sm:w-auto"
-            >
-              Explorar como candidato
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => onAuth('recruiter')}
-              className="w-full sm:w-auto"
-            >
-              Explorar como recrutador
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-          </div>
-        </motion.div>
+      <section className="max-w-7xl mx-auto px-4 pb-20 text-center">
+        <div className="relative inline-block">
+          <div className="absolute inset-0 bg-gradient-purple-teal blur-[60px] opacity-20" />
+          <h2 className="relative text-3xl md:text-4xl font-bold mb-4">Pronto para começar?</h2>
+        </div>
+        <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
+          Candidatos criam o perfil e já veem as vagas. Empresas passam por uma aprovação
+          antes de publicar a primeira vaga.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            size="lg"
+            onClick={() => onAuth('candidate', 'signup')}
+            className="bg-gradient-purple-teal text-white border-0 hover:opacity-90 w-full sm:w-auto"
+          >
+            Procuro vaga
+            <ArrowRight className="h-5 w-5 ml-2" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => onAuth('recruiter', 'signup')}
+            className="w-full sm:w-auto"
+          >
+            Sou empresa
+            <ArrowRight className="h-5 w-5 ml-2" />
+          </Button>
+        </div>
       </section>
 
       {/* Footer */}
