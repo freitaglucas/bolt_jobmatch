@@ -10,7 +10,14 @@ import { Users, Briefcase, ArrowLeft, Mail, Lock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
 import { useAuth, useRequestPasswordReset } from '@/features/auth/hooks';
-import { SignInSchema, SignUpSchema } from '@/features/auth/schemas';
+import { PASSWORD_HINT, SignInSchema, SignUpSchema } from '@/features/auth/schemas';
+import {
+  AuthUserMessageError,
+  authErrorMessage,
+  authFieldErrors,
+  type AuthField,
+  type AuthFieldErrors,
+} from '@/features/auth/errors';
 import { ZodError } from 'zod';
 import { ConsentDialog } from '@/features/consents/components/ConsentDialog';
 import { TCLE_DRAFT_NOTICE } from '@/features/consents/content';
@@ -22,6 +29,18 @@ interface AuthProps {
   // Papel e modo escolhidos na Landing (ex.: "Sou empresa" abre o cadastro da empresa).
   initialRole?: Role;
   initialMode?: 'login' | 'signup';
+}
+
+// Erro de um campo, ligado ao input por aria-describedby (N75).
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) {
+    return null;
+  }
+  return (
+    <p id={id} role="alert" className="text-sm text-destructive">
+      {message}
+    </p>
+  );
 }
 
 const SIGNUP_SUBTITLE: Record<Role, string> = {
@@ -46,26 +65,44 @@ export function Auth({
   const [consentAccepted, setConsentAccepted] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
   const [forgotPassword, setForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const auth = useAuth();
   const requestPasswordReset = useRequestPasswordReset();
 
+  const clearFieldError = (field: AuthField) => {
+    setFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const switchMode = () => {
+    setMode(mode === 'login' ? 'signup' : 'login');
+    setFieldErrors({});
+    setFormError(null);
+    setNotice(null);
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError(null);
     setNotice(null);
-    setConfirmPasswordError(null);
+    setFieldErrors({});
 
     try {
       if (mode === 'login') {
         const credentials = SignInSchema.parse({ email, password });
         const user = await auth.signIn(credentials);
         if (!user.role) {
-          throw new Error(
-            'Esta conta não tem um perfil candidato/recrutador associado. Entre em contato com o suporte.',
+          throw new AuthUserMessageError(
+            'Esta conta não tem um perfil de candidato ou de recrutador. Fale com o suporte do Job Match.',
           );
         }
         onLogin(user.role);
@@ -86,24 +123,21 @@ export function Auth({
         return;
       }
       if (!result.user.role) {
-        throw new Error('Não foi possível identificar o perfil da conta criada.');
+        throw new AuthUserMessageError(
+          'Sua conta foi criada, mas não conseguimos abrir o perfil. Faça login para continuar.',
+        );
       }
       onLogin(result.user.role);
     } catch (error) {
       if (error instanceof ZodError) {
-        const confirmPasswordIssue = error.issues.find(
-          (issue) => issue.path[0] === 'confirmPassword',
-        );
-        if (confirmPasswordIssue) {
-          setConfirmPasswordError(confirmPasswordIssue.message);
-          return;
+        const errors = authFieldErrors(error);
+        setFieldErrors(errors);
+        if (Object.keys(errors).length === 0) {
+          setFormError(authErrorMessage(error));
         }
+        return;
       }
-      setFormError(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível concluir a autenticação. Tente novamente.',
-      );
+      setFormError(authErrorMessage(error));
     }
   };
 
@@ -252,7 +286,7 @@ export function Auth({
               </div>
 
               {/* Form */}
-              <form className="space-y-4" onSubmit={submit}>
+              <form className="space-y-4" onSubmit={submit} noValidate>
                 {mode === 'signup' && (
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
@@ -264,10 +298,16 @@ export function Auth({
                         className="pl-9"
                         autoComplete="name"
                         value={fullName}
-                        onChange={(event) => setFullName(event.target.value)}
+                        onChange={(event) => {
+                          setFullName(event.target.value);
+                          clearFieldError('fullName');
+                        }}
+                        aria-invalid={Boolean(fieldErrors.fullName)}
+                        aria-describedby={fieldErrors.fullName ? 'name-error' : undefined}
                         required
                       />
                     </div>
+                    <FieldError id="name-error" message={fieldErrors.fullName} />
                   </div>
                 )}
                 <div className="space-y-2">
@@ -281,10 +321,16 @@ export function Auth({
                       className="pl-9"
                       autoComplete="email"
                       value={email}
-                      onChange={(event) => setEmail(event.target.value)}
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        clearFieldError('email');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.email)}
+                      aria-describedby={fieldErrors.email ? 'email-error' : undefined}
                       required
                     />
                   </div>
+                  <FieldError id="email-error" message={fieldErrors.email} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
@@ -297,11 +343,29 @@ export function Auth({
                       className="pl-9"
                       autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      minLength={6}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        clearFieldError('password');
+                      }}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      aria-describedby={
+                        [
+                          mode === 'signup' ? 'password-hint' : null,
+                          fieldErrors.password ? 'password-error' : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ') || undefined
+                      }
+                      minLength={mode === 'signup' ? 6 : undefined}
                       required
                     />
                   </div>
+                  {mode === 'signup' && !fieldErrors.password && (
+                    <p id="password-hint" className="text-xs text-muted-foreground">
+                      {PASSWORD_HINT}
+                    </p>
+                  )}
+                  <FieldError id="password-error" message={fieldErrors.password} />
                 </div>
                 {mode === 'login' && (
                   <div className="flex justify-end">
@@ -328,17 +392,20 @@ export function Auth({
                         value={confirmPassword}
                         onChange={(event) => {
                           setConfirmPassword(event.target.value);
-                          setConfirmPasswordError(null);
+                          clearFieldError('confirmPassword');
                         }}
+                        aria-invalid={Boolean(fieldErrors.confirmPassword)}
+                        aria-describedby={
+                          fieldErrors.confirmPassword ? 'confirm-password-error' : undefined
+                        }
                         minLength={6}
                         required
                       />
                     </div>
-                    {confirmPasswordError && (
-                      <p role="alert" className="text-sm text-destructive">
-                        {confirmPasswordError}
-                      </p>
-                    )}
+                    <FieldError
+                      id="confirm-password-error"
+                      message={fieldErrors.confirmPassword}
+                    />
                   </div>
                 )}
                 {mode === 'signup' && (
@@ -372,6 +439,7 @@ export function Auth({
                         .
                       </label>
                     </div>
+                    <FieldError id="consent-error" message={fieldErrors.consentAccepted} />
                     <p className="text-xs font-medium text-destructive">
                       {TCLE_DRAFT_NOTICE}
                     </p>
@@ -409,7 +477,7 @@ export function Auth({
                 {mode === 'login' ? 'Ainda não tem conta?' : 'Já tem uma conta?'}{' '}
                 <button
                   type="button"
-                  onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                  onClick={switchMode}
                   className="text-primary font-medium hover:underline"
                 >
                   {mode === 'login' ? 'Cadastre-se' : 'Faça login'}

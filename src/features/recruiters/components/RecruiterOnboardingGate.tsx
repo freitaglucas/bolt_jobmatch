@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Logo } from '@/components/Logo';
+import { GateError, GatePage, SessionSplash } from '@/components/GateShell';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getRecruiterGateState } from '../api';
+import { APPROVAL_SLA_TEXT, SUPPORT_EMAIL, approvalCheckToast } from '../approval';
 import { useRecruiterOnboarding, useSaveRecruiterOnboarding } from '../hooks';
 import { RecruiterOnboardingSchema } from '../schemas';
 import type {
@@ -32,18 +34,36 @@ export function RecruiterOnboardingGate({
   const [editing, setEditing] = useState(false);
   const [submittedSummary, setSubmittedSummary] =
     useState<RecruiterOnboardingProfile | null>(null);
+  const { toast } = useToast();
 
   if (profileQuery.isLoading) {
-    return <LoadingScreen />;
+    return <SessionSplash label="Carregando seus dados…" />;
   }
 
-  if (profileQuery.isError) {
-    return <ErrorScreen onRetry={() => void profileQuery.refetch()} />;
+  if (profileQuery.isError && !profileQuery.data) {
+    return (
+      <GateError
+        message="Não foi possível carregar seus dados de recrutador."
+        onRetry={() => void profileQuery.refetch()}
+        onLogout={onLogout}
+      />
+    );
   }
 
   if (!profileQuery.data) {
-    return <LoadingScreen />;
+    return <SessionSplash label="Carregando seus dados…" />;
   }
+
+  const checkApproval = async () => {
+    const result = await profileQuery.refetch();
+    const feedback = approvalCheckToast({
+      isError: result.isError,
+      state: result.data ? getRecruiterGateState(result.data) : null,
+    });
+    if (feedback) {
+      toast(feedback);
+    }
+  };
 
   const profile = profileQuery.data;
   const state = getRecruiterGateState(profile);
@@ -59,75 +79,49 @@ export function RecruiterOnboardingGate({
   const summary = submittedSummary ?? profile;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="px-4 h-16 flex items-center justify-between">
-        <Logo size={28} />
-      </header>
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-xl">
-          {showForm ? (
-            <RecruiterOnboardingForm
-              initialValues={summary}
-              needsCompany={needsCompany}
-              isSubmitting={saveMutation.isPending}
-              submitError={
-                saveMutation.error instanceof Error
-                  ? saveMutation.error.message
-                  : null
-              }
-              onSubmit={(input) =>
-                saveMutation.mutate(input, {
-                  onSuccess: () => {
-                    if (needsCompany) {
-                      return;
-                    }
-                    setSubmittedSummary({
-                      companyId: profile.companyId,
-                      companyName: input.companyName,
-                      position: input.position,
-                      phone: input.phone,
-                      approvedAt: null,
-                    });
-                    setEditing(false);
-                  },
-                })
-              }
-            />
-          ) : (
-            <RecruiterPendingApproval
-              profile={summary}
-              onCheck={() => void profileQuery.refetch()}
-              onEdit={() => {
-                setEditing(true);
-                setSubmittedSummary(null);
-              }}
-              onLogout={onLogout}
-            />
-          )}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function LoadingScreen() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-      Carregando...
-    </div>
-  );
-}
-
-function ErrorScreen({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
-      <p className="text-destructive">
-        Não foi possível carregar seus dados de recrutador. Tente novamente.
-      </p>
-      <Button type="button" variant="outline" onClick={onRetry}>
-        Tentar novamente
-      </Button>
-    </div>
+    <GatePage onLogout={onLogout}>
+      <div className="w-full max-w-xl">
+        {showForm ? (
+          <RecruiterOnboardingForm
+            initialValues={summary}
+            needsCompany={needsCompany}
+            isSubmitting={saveMutation.isPending}
+            submitError={
+              saveMutation.error instanceof Error
+                ? saveMutation.error.message
+                : null
+            }
+            onSubmit={(input) =>
+              saveMutation.mutate(input, {
+                onSuccess: () => {
+                  if (needsCompany) {
+                    return;
+                  }
+                  setSubmittedSummary({
+                    companyId: profile.companyId,
+                    companyName: input.companyName,
+                    position: input.position,
+                    phone: input.phone,
+                    approvedAt: null,
+                  });
+                  setEditing(false);
+                },
+              })
+            }
+          />
+        ) : (
+          <RecruiterPendingApproval
+            profile={summary}
+            isChecking={profileQuery.isFetching}
+            onCheck={() => void checkApproval()}
+            onEdit={() => {
+              setEditing(true);
+              setSubmittedSummary(null);
+            }}
+          />
+        )}
+      </div>
+    </GatePage>
   );
 }
 
@@ -256,14 +250,14 @@ function RecruiterOnboardingForm({
 
 function RecruiterPendingApproval({
   profile,
+  isChecking,
   onCheck,
   onEdit,
-  onLogout,
 }: {
   profile: RecruiterOnboardingProfile;
+  isChecking: boolean;
   onCheck: () => void;
   onEdit: () => void;
-  onLogout: () => void;
 }) {
   return (
     <Card>
@@ -285,19 +279,32 @@ function RecruiterPendingApproval({
             <p className="font-medium">{profile.position}</p>
           </div>
         </div>
+        <div className="rounded-lg bg-muted/50 p-4 space-y-1 text-sm">
+          <p>
+            <span className="font-medium">Prazo da análise:</span> {APPROVAL_SLA_TEXT}.
+          </p>
+          <p className="text-muted-foreground">
+            Dúvidas? Escreva para{' '}
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="text-primary underline underline-offset-2"
+            >
+              {SUPPORT_EMAIL}
+            </a>
+            .
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           <Button
             type="button"
             onClick={onCheck}
+            disabled={isChecking}
             className="bg-gradient-purple-teal text-white border-0 hover:opacity-90"
           >
-            Verificar aprovação
+            {isChecking ? 'Verificando...' : 'Verificar aprovação'}
           </Button>
           <Button type="button" variant="outline" onClick={onEdit}>
             Editar dados
-          </Button>
-          <Button type="button" variant="ghost" onClick={onLogout}>
-            Sair
           </Button>
         </div>
       </CardContent>

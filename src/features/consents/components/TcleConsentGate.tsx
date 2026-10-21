@@ -1,5 +1,5 @@
 import { useState, type PropsWithChildren } from 'react';
-import { Logo } from '@/components/Logo';
+import { GatePage, SessionSplash } from '@/components/GateShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,10 +9,13 @@ import { ConsentDialog } from './ConsentDialog';
 
 interface TcleConsentGateProps {
   userId: string | null;
+  // Sair sem aceitar (N76).
+  onLogout?: () => void;
 }
 
 export function TcleConsentGate({
   userId,
+  onLogout,
   children,
 }: PropsWithChildren<TcleConsentGateProps>) {
   const { hasConsented, isLoading, accept, acceptError, isAccepting } =
@@ -21,11 +24,7 @@ export function TcleConsentGate({
   const [termsOpen, setTermsOpen] = useState(false);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground">
-        Carregando…
-      </div>
-    );
+    return <SessionSplash label="Carregando…" />;
   }
 
   if (hasConsented) {
@@ -33,9 +32,8 @@ export function TcleConsentGate({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
-      <Logo size={32} />
-      <Card className="mt-6 w-full max-w-md border-border bg-card/50 backdrop-blur-sm">
+    <GatePage onLogout={onLogout}>
+      <Card className="w-full max-w-md border-border bg-card/50 backdrop-blur-sm">
         <CardContent className="p-8">
           <h1 className="text-2xl font-bold mb-2">
             Termos de Uso e Política de Privacidade
@@ -78,9 +76,7 @@ export function TcleConsentGate({
 
           {acceptError && (
             <p role="alert" className="text-sm text-destructive mb-4">
-              {acceptError instanceof Error
-                ? acceptError.message
-                : 'Não foi possível registrar seu consentimento. Tente novamente.'}
+              Não foi possível registrar seu aceite. Confira sua conexão e tente de novo.
             </p>
           )}
 
@@ -96,6 +92,6 @@ export function TcleConsentGate({
         </CardContent>
       </Card>
       <ConsentDialog open={termsOpen} onOpenChange={setTermsOpen} />
-    </div>
+    </GatePage>
   );
 }
