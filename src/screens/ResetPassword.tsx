@@ -13,7 +13,12 @@ import {
   useRequestPasswordReset,
   useUpdatePassword,
 } from '@/features/auth/hooks';
-import { ResetPasswordSchema } from '@/features/auth/schemas';
+import { PASSWORD_HINT, ResetPasswordSchema } from '@/features/auth/schemas';
+import {
+  authErrorMessage,
+  authFieldErrors,
+  type AuthFieldErrors,
+} from '@/features/auth/errors';
 
 interface ResetPasswordProps {
   onBackToLogin: () => void;
@@ -30,7 +35,8 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
@@ -46,7 +52,8 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setConfirmPasswordError(null);
+    setFieldErrors({});
+    setFormError(null);
 
     try {
       const validated = ResetPasswordSchema.parse({ password, confirmPassword });
@@ -59,17 +66,10 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
       onBackToLogin();
     } catch (error) {
       if (error instanceof ZodError) {
-        const confirmPasswordIssue = error.issues.find(
-          (issue) => issue.path[0] === 'confirmPassword',
-        );
-        setConfirmPasswordError(
-          confirmPasswordIssue
-            ? confirmPasswordIssue.message
-            : 'Verifique os campos e tente novamente.',
-        );
+        setFieldErrors(authFieldErrors(error));
         return;
       }
-      setConfirmPasswordError('Não foi possível redefinir a senha. Tente novamente.');
+      setFormError(authErrorMessage(error));
     }
   };
 
@@ -128,7 +128,7 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
     );
   } else {
     content = (
-      <form className="space-y-4" onSubmit={submit}>
+      <form className="space-y-4" onSubmit={submit} noValidate>
         <div className="space-y-2">
           <Label htmlFor="new-password">Nova senha</Label>
           <div className="relative">
@@ -140,11 +140,25 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
               className="pl-9"
               autoComplete="new-password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setFieldErrors((current) => ({ ...current, password: undefined }));
+              }}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? 'new-password-error' : 'new-password-hint'}
               minLength={6}
               required
             />
           </div>
+          {fieldErrors.password ? (
+            <p id="new-password-error" role="alert" className="text-sm text-destructive">
+              {fieldErrors.password}
+            </p>
+          ) : (
+            <p id="new-password-hint" className="text-xs text-muted-foreground">
+              {PASSWORD_HINT}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm-new-password">Confirmar nova senha</Label>
@@ -159,18 +173,27 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
               value={confirmPassword}
               onChange={(event) => {
                 setConfirmPassword(event.target.value);
-                setConfirmPasswordError(null);
+                setFieldErrors((current) => ({ ...current, confirmPassword: undefined }));
               }}
+              aria-invalid={Boolean(fieldErrors.confirmPassword)}
+              aria-describedby={
+                fieldErrors.confirmPassword ? 'confirm-new-password-error' : undefined
+              }
               minLength={6}
               required
             />
           </div>
-          {confirmPasswordError && (
-            <p role="alert" className="text-sm text-destructive">
-              {confirmPasswordError}
+          {fieldErrors.confirmPassword && (
+            <p id="confirm-new-password-error" role="alert" className="text-sm text-destructive">
+              {fieldErrors.confirmPassword}
             </p>
           )}
         </div>
+        {formError && (
+          <p role="alert" className="text-sm text-destructive">
+            {formError}
+          </p>
+        )}
         <Button
           type="submit"
           disabled={updatePassword.isPending}

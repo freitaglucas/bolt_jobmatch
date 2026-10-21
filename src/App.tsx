@@ -26,11 +26,12 @@ import { createApplication } from '@/features/applications/api';
 import { APP_NAME, screenTitle } from '@/lib/screen-title';
 import { trackApplicationSubmitted } from '@/features/telemetry/api';
 import { readDeepLinkScreen, stripDeepLinkParam } from '@/lib/deep-link';
-
-type AppState = 'landing' | 'auth' | 'app';
+import { resolveAppState, type AppState } from '@/lib/app-state';
+import { SessionSplash } from '@/components/GateShell';
 
 function App() {
-  const [appState, setAppState] = useState<AppState>('landing');
+  // Comeca em "loading" (N76): quem ja tem sessao nao ve a Landing piscar.
+  const [appState, setAppState] = useState<AppState>('loading');
   const [role, setRole] = useState<Role>('candidate');
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [screen, setScreen] = useState<Screen>('swipe');
@@ -62,16 +63,18 @@ function App() {
     if (isResetPasswordRoute) {
       return;
     }
-    if (auth.isLoading || !auth.user) {
-      return;
+    const user = auth.user ?? null;
+    if (!auth.isLoading && user?.role) {
+      setRole(user.role);
+      setScreen(startScreen(user.role));
     }
-    if (auth.user.role) {
-      setRole(auth.user.role);
-      setScreen(startScreen(auth.user.role));
-      setAppState('app');
-    } else {
-      setAppState('auth');
-    }
+    setAppState((current) =>
+      resolveAppState(current, {
+        isLoading: auth.isLoading,
+        hasUser: user !== null,
+        hasRole: Boolean(user?.role),
+      }),
+    );
   }, [auth.isLoading, auth.user, isResetPasswordRoute]);
 
   const toggleDark = () => {
@@ -166,6 +169,15 @@ function App() {
     );
   }
 
+  // Sessao carregando: splash neutro (N76)
+  if (appState === 'loading') {
+    return (
+      <div className={darkMode ? '' : 'light'}>
+        <SessionSplash />
+      </div>
+    );
+  }
+
   // Landing
   if (appState === 'landing') {
     return (
@@ -255,9 +267,9 @@ function App() {
 
   return (
     <div className={darkMode ? '' : 'light'}>
-      <TcleConsentGate userId={auth.user?.id ?? null}>
+      <TcleConsentGate userId={auth.user?.id ?? null} onLogout={handleLogout}>
         {role === 'candidate' ? (
-          <CandidateOnboardingGate>{appContent}</CandidateOnboardingGate>
+          <CandidateOnboardingGate onLogout={handleLogout}>{appContent}</CandidateOnboardingGate>
         ) : (
           <RecruiterOnboardingGate onLogout={handleLogout}>
             {appContent}
