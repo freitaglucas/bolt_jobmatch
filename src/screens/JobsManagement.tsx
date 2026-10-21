@@ -23,6 +23,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Lock,
+  Link2,
 } from 'lucide-react';
 import { focusPipelineOnJob } from '../features/applications/pipeline-focus';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,8 @@ interface JobsManagementProps {
   onToggleJobStatus: (jobId: string) => void;
   onDeleteJob: (jobId: string) => void;
   onCloseJob: (jobId: string) => void;
+  // Copia o link "?vaga=<id>" para divulgar a vaga (N84).
+  onCopyJobLink?: (jobId: string) => void;
 }
 
 function statusConfig(status: Job['status']) {
@@ -58,6 +61,7 @@ export function JobsManagement({
   onToggleJobStatus,
   onDeleteJob,
   onCloseJob,
+  onCopyJobLink,
 }: JobsManagementProps) {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -184,7 +188,19 @@ export function JobsManagement({
                             className="fixed inset-0 z-40"
                             onClick={() => setMenuOpen(null)}
                           />
-                          <div className="absolute right-0 top-10 z-50 w-48 rounded-xl border border-border bg-popover shadow-lg py-1">
+                          <div className="absolute right-0 top-10 z-50 w-52 rounded-xl border border-border bg-popover shadow-lg py-1">
+                            {job.status === 'Ativa' && onCopyJobLink && (
+                              <button
+                                onClick={() => {
+                                  onCopyJobLink(job.id);
+                                  setMenuOpen(null);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 flex items-center gap-2"
+                              >
+                                <Link2 className="h-4 w-4 text-primary" />
+                                Copiar link da vaga
+                              </button>
+                            )}
                             {job.status !== 'Fechada' && (
                               <button
                                 onClick={() => {

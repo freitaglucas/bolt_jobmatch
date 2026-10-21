@@ -14,6 +14,7 @@ import { isForeignKeyViolation, mapRecruiterJob } from '@/features/jobs/recruite
 import { JobsManagement } from '@/screens/JobsManagement';
 import { focusPipelineOnJob } from '@/features/applications/pipeline-focus';
 import { CloseJobDialog } from '@/features/jobs/components/CloseJobDialog';
+import { buildJobLink } from '@/features/telemetry/origin';
 
 interface RecruiterJobsProps {
   onNewJob: () => void;
@@ -61,6 +62,23 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
   };
 
   const closingJob = jobs.find((item) => item.id === closingJobId) ?? null;
+
+  // Link da vaga para o anuncio (N84). Sem area de transferencia, mostra o link no aviso.
+  const handleCopyJobLink = (jobId: string) => {
+    const link = buildJobLink(window.location.origin, jobId);
+    const copied = () =>
+      toast({
+        title: 'Link da vaga copiado',
+        description:
+          'Cole no anúncio (ex.: LinkedIn). Quem se cadastrar por ele vê esta vaga primeiro.',
+      });
+    const manual = () => toast({ title: 'Copie o link da vaga', description: link });
+    if (!navigator.clipboard) {
+      manual();
+      return;
+    }
+    navigator.clipboard.writeText(link).then(copied, manual);
+  };
 
   const handleDelete = (jobId: string) => {
     if (!window.confirm('Excluir esta vaga? Essa ação não pode ser desfeita.')) return;
@@ -117,6 +135,7 @@ export function RecruiterJobs({ onNewJob, onNavigate }: RecruiterJobsProps) {
         onToggleJobStatus={handleToggleStatus}
         onDeleteJob={handleDelete}
         onCloseJob={setClosingJobId}
+        onCopyJobLink={handleCopyJobLink}
       />
       {closingJob && (
         <CloseJobDialog
