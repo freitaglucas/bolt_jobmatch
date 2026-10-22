@@ -236,6 +236,27 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
       },
 
+      async recordReserve({ applicationId, message }) {
+        // Reserva interna (N83): reserva nova ou a renovacao, com o token do recrutador.
+        const { data: active, error: activeError } = await admin
+          .from('application_reserves')
+          .select('id')
+          .eq('application_id', applicationId)
+          .is('ended_at', null)
+          .maybeSingle();
+        if (activeError) {
+          throw new Error(`lookup_failed: ${activeError.message}`);
+        }
+        const { data, error } = await userClient.rpc(active ? 'renew_reserve' : 'put_on_reserve', {
+          _application_id: applicationId,
+          _message: message,
+        });
+        if (error) {
+          throw new Error(error.message);
+        }
+        return String(data);
+      },
+
       send: (payload) => sendWithResend(fetch, resendKey, payload),
 
       async finishLog(id, result) {

@@ -1,6 +1,7 @@
 import type { ApplicationStatus, PipelineCandidate } from '../../lib/types';
 import type { Database } from '../../shared/types/database';
 import { pickOpenDeadline, type FeedbackDeadlineRow } from './stage-deadline';
+import { pickActiveReserve, type ReserveRow } from './reserve';
 
 // Linha como vem do banco: candidaturas das vagas do recrutador, com dados do
 // candidato e da vaga embutidos (ver recruiter-applications.api.ts).
@@ -12,6 +13,8 @@ export interface RecruiterApplicationRow {
   created_at: string;
   silver_medalist: boolean;
   feedback_deadlines: FeedbackDeadlineRow[] | null;
+  // Reserva interna (N83). So o recrutador le esta tabela.
+  application_reserves?: ReserveRow[] | null;
   jobs: { title: string } | null;
   candidate_profiles: {
     current_position: string | null;
@@ -71,6 +74,7 @@ export function mapRecruiterApplication(
 
   const profile = row.candidate_profiles;
   const openDeadline = pickOpenDeadline(row.feedback_deadlines);
+  const reserve = pickActiveReserve(row.application_reserves);
 
   return {
     id: row.id,
@@ -88,6 +92,8 @@ export function mapRecruiterApplication(
     silverMedalist: row.silver_medalist,
     returnDueAt: openDeadline?.due_at ?? null,
     postponeCount: openDeadline?.postpone_no ?? 0,
+    reserveUntil: reserve?.validUntil ?? null,
+    reserveRenewals: reserve?.renewals ?? 0,
   };
 }
 

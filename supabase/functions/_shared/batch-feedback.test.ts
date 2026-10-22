@@ -256,6 +256,7 @@ function makeDeps(overrides: Partial<BatchDeps> = {}) {
     claimLog: vi.fn(async () => ({ id: 'log-1' })),
     recordDecision: vi.fn(async () => {}),
     recordUpdate: vi.fn(async () => {}),
+    recordReserve: vi.fn(async () => '2026-11-04T15:00:00.000Z'),
     send: vi.fn(async () => ({ id: 'prov-1' })),
     finishLog: vi.fn(async () => {}),
     pause: vi.fn(async () => {}),
@@ -413,5 +414,54 @@ describe('processBatch', () => {
     const deps = makeDeps();
     await processBatch(deps, { ...CONTEXT, recruiterEmail: null }, [item()]);
     expect(deps.send.mock.calls[0]?.[0]).not.toHaveProperty('reply_to');
+  });
+});
+describe('reserva interna (N83)', () => {
+  it('accepts kind "reserve" without reason or date, up to 1000 characters', () => {
+    const ok = parseBatchItems([{ application_id: APP_1, kind: 'reserve', message: MESSAGE }]);
+    expect(ok).toEqual({
+      ok: true,
+      items: [{ applicationId: APP_1, kind: 'reserve', reasonCode: null, message: MESSAGE, newDueAt: null }],
+      rejected: [],
+    });
+    const withDate = parseBatchItems([
+      { application_id: APP_1, kind: 'reserve', message: MESSAGE, new_due_at: '2026-11-01T00:00:00Z' },
+    ]);
+    const withReason = parseBatchItems([
+      { application_id: APP_1, kind: 'reserve', message: MESSAGE, reason_code: 'better_fit' },
+    ]);
+    const tooLong = parseBatchItems([{ application_id: APP_1, kind: 'reserve', message: 'x'.repeat(1001) }]);
+    for (const result of [withDate, withReason, tooLong]) {
+      expect(result.ok && result.rejected[0]?.error).toBe('invalid_item');
+    }
+  });
+
+  it('records the reserve, logs it as an update and e-mails the final phase with the new date', async () => {
+    const deps = makeDeps({ loadApplication: vi.fn(async () => ({ ...APPLICATION, stage: 'final_interview' })) });
+    const message = 'Você está na fase final do processo seletivo da vaga Analista de Dados.';
+    const summary = await processBatch(deps, CONTEXT, [
+      item({ kind: 'reserve', reasonCode: null, message }),
+    ]);
+
+    expect(summary.results).toEqual([{ application_id: APP_1, status: 'sent', in_app: true }]);
+    expect(deps.recordReserve).toHaveBeenCalledWith({ applicationId: APP_1, message });
+    expect(deps.recordDecision).not.toHaveBeenCalled();
+    expect(deps.recordUpdate).not.toHaveBeenCalled();
+    expect(deps.claimLog).toHaveBeenCalledWith(expect.objectContaining({ kind: 'update' }));
+    const payload = deps.send.mock.calls[0]?.[0];
+    expect(payload?.subject).toBe(
+      'Atualização sobre a sua candidatura: Analista de Dados · Próximo retorno até 04/11',
+    );
+    expect(payload?.text).toContain('Etapa atual: Final');
+    expect(`${payload?.subject} ${payload?.text} ${payload?.html}`).not.toMatch(/reserva/i);
+  });
+
+  it('reports the database refusal (e.g. not in the Final stage) without sending', async () => {
+    const deps = makeDeps({ recordReserve: vi.fn(async () => { throw new Error('stage_not_final'); }) });
+    const summary = await processBatch(deps, CONTEXT, [
+      item({ kind: 'reserve', reasonCode: null }),
+    ]);
+    expect(summary.results[0]).toMatchObject({ status: 'failed', error: 'stage_not_final', in_app: false });
+    expect(deps.send).not.toHaveBeenCalled();
   });
 });

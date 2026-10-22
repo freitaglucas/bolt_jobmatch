@@ -28,6 +28,10 @@ const ITEM_ERROR_LABELS: Record<string, string> = {
   postpone_too_long: 'A nova data passa de 14 dias.',
   stage_without_deadline: 'Esta etapa não tem prazo de retorno.',
   not_allowed: 'Sem permissão para esta candidatura.',
+  stage_not_final: 'Só quem está na etapa Final pode ficar em reserva.',
+  already_reserved: 'Este candidato já está em reserva.',
+  not_reserved: 'Este candidato não está mais em reserva.',
+  renewal_limit_reached: 'A reserva já foi renovada uma vez.',
   email_failed: 'O retorno ficou registrado no app, mas o e-mail não saiu.',
 };
 

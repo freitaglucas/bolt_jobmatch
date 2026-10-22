@@ -12,12 +12,14 @@ import {
   type MatchInsights,
   type ReasonCode,
 } from './rejection-reasons';
+import { MAX_RESERVE_RENEWALS, buildReserveBody, reserveDueDate } from './reserve';
 
 // Retorno em lote ao candidato (N15b). Regras puras: elegibilidade, mensagem,
 // plano de envio e orquestracao. A tela so liga isso aos botoes.
 
 // "Nao avancou" leva um dos 5 motivos por candidato (N62).
-export type BatchFeedbackType = 'update' | 'advance' | 'reject';
+// "Manter em reserva" (N83) e interno: o candidato recebe que esta na fase final.
+export type BatchFeedbackType = 'update' | 'advance' | 'reject' | 'reserve';
 
 export const BATCH_CHUNK_SIZE = 25;
 export const BATCH_TEXT_MAX_LENGTH = 300;
@@ -137,6 +139,16 @@ export function checkEligibility(
     return canReject(candidate.stage) ? null : 'A candidatura já foi encerrada.';
   }
 
+  if (type === 'reserve') {
+    if (candidate.stage !== 'Final') {
+      return 'Só quem está na etapa Final pode ficar em reserva.';
+    }
+    if (candidate.reserveUntil && (candidate.reserveRenewals ?? 0) >= MAX_RESERVE_RENEWALS) {
+      return 'A reserva já foi renovada uma vez. Dê o retorno final.';
+    }
+    return null;
+  }
+
   if (type === 'advance') {
     if (candidate.stage === 'Final') {
       return 'A aprovação é feita individualmente.';
@@ -149,6 +161,9 @@ export function checkEligibility(
 
   if (!UPDATE_STAGES.has(candidate.stage)) {
     return 'Etapa final: sem prazo de retorno.';
+  }
+  if (candidate.reserveUntil) {
+    return 'Está em reserva: use "Manter em reserva" para renovar.';
   }
   if ((candidate.postponeCount ?? 0) >= MAX_POSTPONES_PER_STAGE) {
     return `Já usou os ${MAX_POSTPONES_PER_STAGE} adiamentos desta etapa.`;
@@ -187,6 +202,8 @@ export interface BatchEntry {
   targetStage: ApplicationStatus | null;
   // Nao avancou: motivo (um dos 5 do N62), gravado em feedbacks.reason_code.
   reasonCode?: ReasonCode | null;
+  // Manter em reserva (N83): reserva nova ou a renovacao, decidida no servidor.
+  reserve?: boolean;
 }
 
 export interface ExcludedCandidate {
@@ -219,6 +236,12 @@ export function buildBatchMessage(input: {
       insights: input.insights ?? EMPTY_INSIGHTS,
       jobTitle: job,
       includeStrengths: input.includeStrengths ?? false,
+    });
+  } else if (input.type === 'reserve') {
+    body = buildReserveBody({
+      jobTitle: job,
+      dueDate: reserveDueDate(input.now),
+      renewing: Boolean(candidate.reserveUntil),
     });
   } else if (input.type === 'update') {
     const date = parseDateInput(input.dueDate);
@@ -293,6 +316,7 @@ export function buildBatchPlan(input: {
       newDueAt,
       reasonCode,
       targetStage: targetStageFor(input.type, candidate.stage),
+      ...(input.type === 'reserve' ? { reserve: true } : {}),
     });
   }
 
@@ -300,6 +324,9 @@ export function buildBatchPlan(input: {
 }
 
 export function toRequestItem(entry: BatchEntry): BatchRequestItem {
+  if (entry.reserve) {
+    return { application_id: entry.candidate.id, kind: 'reserve', message: entry.message };
+  }
   return entry.newDueAt
     ? {
         application_id: entry.candidate.id,

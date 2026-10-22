@@ -10,7 +10,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Briefcase, Calendar, Check, Clock, MapPin } from 'lucide-react';
+import { Bookmark, Briefcase, Calendar, Check, Clock, MapPin } from 'lucide-react';
+import { reserveBadge } from '../features/applications/reserve';
 import { BatchFeedbackDialog } from '../features/applications/components/BatchFeedbackDialog';
 import {
   DEADLINE_TONE_CLASSES,
@@ -334,6 +335,24 @@ export function Pipeline() {
                               >
                                 <Clock className="h-3 w-3" />
                                 {deadline.label} · até {deadline.dueDateText}
+                              </span>
+                            ) : null;
+                          })()}
+
+                          {(() => {
+                            // Reserva interna (N83): so o recrutador ve este selo.
+                            const reserve = reserveBadge(candidate.reserveUntil, new Date());
+                            return reserve ? (
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 mt-2 ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium',
+                                  reserve.overdue
+                                    ? 'bg-destructive/15 text-destructive'
+                                    : 'bg-primary/15 text-primary',
+                                )}
+                              >
+                                <Bookmark className="h-3 w-3" aria-hidden="true" />
+                                {reserve.text}
                               </span>
                             ) : null;
                           })()}
