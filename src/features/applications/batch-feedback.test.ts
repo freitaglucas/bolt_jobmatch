@@ -344,3 +344,56 @@ describe('summarizeOutcomes', () => {
     ).toEqual({ sent: 1, emailFailed: 1, skipped: 1, failed: 1, moved: 1 });
   });
 });
+
+describe('manter em reserva (N83)', () => {
+  const finalist = candidate({ stage: 'Final' });
+  const reserved = candidate({
+    stage: 'Final',
+    reserveUntil: new Date(2026, 9, 27, 12).toISOString(),
+    reserveRenewals: 0,
+  });
+
+  it('only accepts candidates in the Final stage, with one renewal', () => {
+    const options = { dueDate: '2026-10-20', now: NOW };
+    expect(checkEligibility(finalist, 'reserve', options)).toBeNull();
+    expect(checkEligibility(reserved, 'reserve', options)).toBeNull();
+    expect(checkEligibility(candidate({ stage: 'Entrevista' }), 'reserve', options)).toBe(
+      'Só quem está na etapa Final pode ficar em reserva.',
+    );
+    expect(checkEligibility({ ...reserved, reserveRenewals: 1 }, 'reserve', options)).toBe(
+      'A reserva já foi renovada uma vez. Dê o retorno final.',
+    );
+  });
+
+  it('sends reserved candidates to "Manter em reserva" instead of a plain update', () => {
+    expect(checkEligibility(reserved, 'update', { dueDate: '2026-10-20', now: NOW })).toBe(
+      'Está em reserva: use "Manter em reserva" para renovar.',
+    );
+  });
+
+  it('tells the candidate about the final phase, never about the reserve', () => {
+    const plan = buildBatchPlan({
+      type: 'reserve',
+      candidates: [finalist, { ...reserved, id: 'app-2' }],
+      opening: DEFAULT_OPENING,
+      closing: DEFAULT_CLOSING,
+      dueDate: '2026-10-20',
+      now: NOW,
+    });
+    expect(plan.entries).toHaveLength(2);
+    expect(plan.entries[0]?.message).toContain(
+      'Você está na fase final do processo seletivo da vaga Analista de Dados. O próximo retorno sai até 27/10.',
+    );
+    expect(plan.entries[1]?.message).toContain('Você segue na fase final do processo seletivo');
+    for (const entry of plan.entries) {
+      expect(entry.message).not.toMatch(/reserva/i);
+      expect(entry.targetStage).toBeNull();
+      expect(toRequestItem(entry)).toEqual({
+        application_id: entry.candidate.id,
+        kind: 'reserve',
+        message: entry.message,
+      });
+    }
+  });
+});
+

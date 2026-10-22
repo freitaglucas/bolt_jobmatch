@@ -160,6 +160,8 @@ export interface PipelineCandidate {
   silverMedalist?: boolean;
   returnDueAt?: string | null; // proximo retorno ate (feedback_deadlines aberto)
   postponeCount?: number; // adiamentos ja usados na etapa atual
+  reserveUntil?: string | null; // reserva interna ativa (N83): validade
+  reserveRenewals?: number; // renovacoes ja usadas na reserva ativa
 }
 
 export interface TokenEvent {

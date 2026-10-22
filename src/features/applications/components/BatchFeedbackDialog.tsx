@@ -40,6 +40,7 @@ import {
   type MatchInsights,
   type ReasonCode,
 } from '../rejection-reasons';
+import { MAX_RESERVE_RENEWALS, RESERVE_DAYS } from '../reserve';
 
 interface BatchFeedbackDialogProps {
   candidates: PipelineCandidate[];
@@ -71,6 +72,11 @@ const TYPE_OPTIONS: {
     value: 'advance',
     label: 'Avançou',
     hint: 'Vai para a próxima etapa e recebe o aviso',
+  },
+  {
+    value: 'reserve',
+    label: 'Manter em reserva',
+    hint: 'Só etapa Final. Interno: o candidato não vê a reserva',
   },
 ];
 
@@ -261,7 +267,7 @@ export function BatchFeedbackDialog({
           <div className="space-y-5">
             <div>
               <p className="text-sm font-medium mb-2">Tipo de retorno</p>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {TYPE_OPTIONS.map((option) => {
                   const selected = option.value === type;
                   return (
@@ -312,6 +318,16 @@ export function BatchFeedbackDialog({
                   </p>
                 )}
               </div>
+            )}
+
+            {type === 'reserve' && (
+              <p className="text-sm text-muted-foreground">
+                A reserva é interna: só você vê. O candidato recebe que está na fase final
+                do processo seletivo, com o próximo retorno em {RESERVE_DAYS} dias. Quem já
+                está em reserva usa aqui a única renovação ({MAX_RESERVE_RENEWALS} por
+                reserva). Se ninguém agir até a data, conta como atraso; ao fechar a vaga,
+                o retorno final é obrigatório.
+              </p>
             )}
 
             {type === 'advance' && (

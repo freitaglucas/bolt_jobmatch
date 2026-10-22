@@ -33,7 +33,9 @@ export const REASON_CODES = [
   'job_closed',
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
-export type FeedbackKind = 'decision' | 'update';
+// reserve (N83): reserva interna de finalista. O candidato recebe uma atualizacao
+// comum ("fase final do processo seletivo"), nunca a palavra "reserva".
+export type FeedbackKind = 'decision' | 'update' | 'reserve';
 
 export interface BatchItem {
   applicationId: string;
@@ -81,16 +83,33 @@ function parseItem(raw: unknown): BatchItem | null {
   if (typeof applicationId !== 'string' || !UUID_RE.test(applicationId)) {
     return null;
   }
-  if (kind !== 'decision' && kind !== 'update') {
+  if (kind !== 'decision' && kind !== 'update' && kind !== 'reserve') {
     return null;
   }
   if (typeof record.message !== 'string') {
     return null;
   }
   const message = record.message.replace(/\r\n?/g, '\n').trim();
-  const maxLength = kind === 'update' ? MAX_UPDATE_MESSAGE_LENGTH : MAX_DECISION_MESSAGE_LENGTH;
+  const maxLength = kind === 'decision' ? MAX_DECISION_MESSAGE_LENGTH : MAX_UPDATE_MESSAGE_LENGTH;
   if (message.length < MIN_MESSAGE_LENGTH || message.length > maxLength) {
     return null;
+  }
+
+  if (kind === 'reserve') {
+    // Reserva: a validade (14 dias) vem do banco; sem motivo e sem data.
+    if (record.reason_code !== undefined && record.reason_code !== null) {
+      return null;
+    }
+    if (record.new_due_at !== undefined && record.new_due_at !== null) {
+      return null;
+    }
+    return {
+      applicationId: applicationId.toLowerCase(),
+      kind,
+      reasonCode: null,
+      message,
+      newDueAt: null,
+    };
   }
 
   if (kind === 'update') {
@@ -203,7 +222,7 @@ export function buildFromHeader(
 //  - avancou (decisao sem motivo): etapa seguinte + prazo padrao de 5 dias;
 //  - nao avancou (decisao com motivo): etapa que o candidato alcancou, sem prazo.
 export function batchStatus(input: {
-  kind: FeedbackKind;
+  kind: 'decision' | 'update';
   stage: string;
   reasonCode: ReasonCode | null;
   newDueAt: string | null;
@@ -229,7 +248,7 @@ export function batchStatus(input: {
 // E-mail do retorno em lote. O texto vem pronto da tela (cada candidato tem a
 // propria mensagem); aqui entram o layout, o bloco de status e o rodape.
 export function renderBatchFeedbackEmail(input: {
-  kind: FeedbackKind;
+  kind: 'decision' | 'update';
   companyName: string | null;
   jobTitle: string;
   message: string;
@@ -266,7 +285,8 @@ export interface ClaimEntry {
   toEmail: string;
   applicationId: string;
   stage: string;
-  kind: FeedbackKind;
+  // A reserva e registrada como 'update' (para o candidato e uma atualizacao).
+  kind: 'decision' | 'update';
 }
 
 export type LogResult =
@@ -282,6 +302,8 @@ export interface BatchDeps {
   // Registra o retorno no app (feedbacks + prazo). Lancam Error(codigo) se o banco recusar.
   recordDecision(input: { applicationId: string; message: string; reasonCode: ReasonCode | null }): Promise<void>;
   recordUpdate(input: { applicationId: string; message: string; newDueAt: string }): Promise<void>;
+  // Reserva interna (N83): coloca em reserva ou renova; devolve a validade (ISO).
+  recordReserve(input: { applicationId: string; message: string }): Promise<string>;
   send(payload: ResendPayload): Promise<{ id: string }>;
   finishLog(id: string, result: LogResult): Promise<void>;
   pause?(): Promise<void>;
@@ -342,7 +364,7 @@ export async function processBatch(
       toEmail,
       applicationId: item.applicationId,
       stage: application.stage,
-      kind: item.kind,
+      kind: item.kind === 'decision' ? 'decision' : 'update',
     });
     if (claim === 'duplicate') {
       results.push({
@@ -354,8 +376,14 @@ export async function processBatch(
     }
     quota -= 1;
 
+    let dueAt = item.newDueAt;
     try {
-      if (item.kind === 'update' && item.newDueAt) {
+      if (item.kind === 'reserve') {
+        dueAt = await deps.recordReserve({
+          applicationId: item.applicationId,
+          message: item.message,
+        });
+      } else if (item.kind === 'update' && item.newDueAt) {
         await deps.recordUpdate({
           applicationId: item.applicationId,
           message: item.message,
@@ -381,15 +409,16 @@ export async function processBatch(
     }
 
     try {
+      const emailKind = item.kind === 'decision' ? 'decision' : 'update';
       const status = batchStatus({
-        kind: item.kind,
+        kind: emailKind,
         stage: application.stage,
         reasonCode: item.reasonCode,
-        newDueAt: item.newDueAt,
+        newDueAt: dueAt,
         now: context.now ?? new Date(),
       });
       const email = renderBatchFeedbackEmail({
-        kind: item.kind,
+        kind: emailKind,
         companyName: application.companyName,
         jobTitle: application.jobTitle,
         message: item.message,

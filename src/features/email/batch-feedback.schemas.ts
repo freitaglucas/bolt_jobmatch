@@ -4,7 +4,8 @@ import { z } from 'zod';
 
 export const batchRequestItemSchema = z.object({
   application_id: z.string(),
-  kind: z.enum(['decision', 'update']),
+  // reserve (N83): reserva interna; o candidato recebe uma atualizacao comum.
+  kind: z.enum(['decision', 'update', 'reserve']),
   message: z.string(),
   reason_code: z.string().optional(),
   new_due_at: z.string().optional(),

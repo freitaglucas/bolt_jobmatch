@@ -11,6 +11,13 @@ Envia e-mail transacional pelo Resend. Templates:
                      "message": "<texto pronto, 10 a 1500 caracteres (update: ate 1000)>",
                      "new_due_at": "<ISO, so em update, ate 14 dias>" } ] }
 
+  `kind: "reserve"` (N83) e a reserva interna de finalista: so etapa Final, sem
+  `reason_code` e sem `new_due_at` (a validade de 14 dias vem do banco). A funcao chama
+  `put_on_reserve` ou, se ja houver reserva ativa, `renew_reserve` (1 vez), com o token
+  do recrutador. O candidato recebe uma atualizacao comum ("fase final do processo
+  seletivo", "Proximo retorno ate DD/MM"); a palavra "reserva" nunca vai para ele. No
+  `email_log` fica como `update`.
+
   Ate 25 itens por chamada. Resposta: `{ sent, failed, skipped_duplicate, skipped_limit, results }`.
   Para cada item: confere que a candidatura e de vaga do recrutador, registra o
   retorno no app (`feedbacks`; cumpre o prazo; em `update` chama `postpone_feedback`

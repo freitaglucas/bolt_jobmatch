@@ -118,6 +118,28 @@ describe('mapRecruiterApplication', () => {
   });
 });
 
+describe('mapRecruiterApplication: reserva interna (N83)', () => {
+  it('reads only the active reserve', () => {
+    const candidate = mapRecruiterApplication(
+      makeRow({
+        current_stage: 'final_interview',
+        application_reserves: [
+          { valid_until: '2026-10-10T15:00:00Z', renewals: 1, ended_at: '2026-10-09T15:00:00Z' },
+          { valid_until: '2026-11-05T15:00:00Z', renewals: 0, ended_at: null },
+        ],
+      }),
+    );
+    expect(candidate?.reserveUntil).toBe('2026-11-05T15:00:00Z');
+    expect(candidate?.reserveRenewals).toBe(0);
+  });
+
+  it('has no reserve when the table returns nothing', () => {
+    const candidate = mapRecruiterApplication(makeRow());
+    expect(candidate?.reserveUntil).toBeNull();
+    expect(candidate?.reserveRenewals).toBe(0);
+  });
+});
+
 describe('avatarColorFor', () => {
   it('is stable for the same id and always returns a known color', () => {
     const colors = ['bg-jm-purple', 'bg-jm-teal', 'bg-jm-orange', 'bg-primary'];
