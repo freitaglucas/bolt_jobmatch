@@ -42,6 +42,25 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"application_reserves": {
+                  Row: {
+                    "application_id": string,"created_at": string,"end_stage": Database["public"]['Enums']["application_status"] | null,"ended_at": string | null,"id": string,"renewals": number,"reserved_at": string,"reserved_by": string | null,"valid_until": string
+                  }
+                  Insert: {
+                    "application_id": string,"created_at"?: string,"end_stage"?: Database["public"]['Enums']["application_status"] | null,"ended_at"?: string | null,"id"?: string,"renewals"?: number,"reserved_at"?: string,"reserved_by"?: string | null,"valid_until": string
+                  }
+                  Update: {
+                    "application_id"?: string,"created_at"?: string,"end_stage"?: Database["public"]['Enums']["application_status"] | null,"ended_at"?: string | null,"id"?: string,"renewals"?: number,"reserved_at"?: string,"reserved_by"?: string | null,"valid_until"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "application_reserves_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"applications": {
                   Row: {
                     "candidate_id": string,"created_at": string,"current_stage": Database["public"]['Enums']["application_status"],"feedback_sent_at": string | null,"id": string,"job_id": string,"last_stage_change_at": string,"match_score": number,"silver_medalist": boolean,"status": Database["public"]['Enums']["application_status"],"updated_at": string
@@ -450,6 +469,18 @@ isOneToOne: false
                            },
 "public_return_seals":
 { Args: { "_job_ids": string[] }; Returns: { job_id: string; seal_percent: number }[]
+                           },
+"put_on_reserve":
+{ Args: { "_application_id": string,"_message": string }; Returns: string
+                           },
+"renew_reserve":
+{ Args: { "_application_id": string,"_message": string }; Returns: string
+                           },
+"reserve_days":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"max_reserve_renewals":
+{ Args: Record<PropertyKey, never>; Returns: number
                            }
           }
           Enums: {
