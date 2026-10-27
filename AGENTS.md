@@ -149,8 +149,9 @@ Regra de operação: configuração, nunca código por cliente.
   Meta de 90%, desconto de 10% simulado. Selo público: mínimo de 30 retornos
   com prazo em 90 dias e 90% ou mais, arredondado para baixo, nunca negativo.
 - Reserva: só na etapa Final, 14 dias + 1 renovação, interna.
-- Token: saldo legado do recrutador. Não paga nada desde 08/10; o extrato fica
-  como histórico (os restos saem no NOVO-7).
+- Token: regra encerrada em 08/10. A tabela `token_ledger` fica no banco só como
+  histórico; não há saldo, crédito nem tela de tokens. O prazo padrão está em
+  `src/features/deadlines/sla.ts` (`SLA_HOURS`, `SLA_DAYS`).
 
 ## Comandos
 npm run dev | npm run build | npm run lint | npm run typecheck | npm test

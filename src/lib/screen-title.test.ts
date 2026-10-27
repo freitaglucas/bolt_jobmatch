@@ -9,14 +9,14 @@ describe('screenTitle', () => {
 
   it('as outras telas levam o nome da tela', () => {
     expect(screenTitle('swipe')).toBe('Vagas para você · Job Match');
-    expect(screenTitle('tokens')).toBe('Retorno no prazo · Job Match');
+    expect(screenTitle('return-goal')).toBe('Retorno no prazo · Job Match');
     expect(screenTitle('pipeline')).toBe('Pipeline · Job Match');
   });
 
   it('nenhuma tela fala de prototipo ou mock', () => {
     const screens = [
       'auth', 'swipe', 'job-detail', 'applications', 'profile', 'dashboard',
-      'jobs', 'job-create', 'pipeline', 'post-hire', 'tokens', 'company',
+      'jobs', 'job-create', 'pipeline', 'post-hire', 'return-goal', 'company',
     ] as const;
     for (const screen of screens) {
       expect(screenTitle(screen).toLowerCase()).not.toMatch(/prot[óo]tipo|mock/);

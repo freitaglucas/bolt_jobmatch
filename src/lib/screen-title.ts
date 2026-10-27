@@ -14,7 +14,7 @@ const SCREEN_TITLES: Record<Screen, string> = {
   'job-create': 'Nova vaga',
   pipeline: 'Pipeline',
   'post-hire': 'Pós-contratação',
-  tokens: 'Retorno no prazo',
+  'return-goal': 'Retorno no prazo',
   company: 'Minha empresa',
 };
 

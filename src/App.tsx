@@ -13,7 +13,7 @@ import { RecruiterJobs } from '@/screens/RecruiterJobs';
 import { JobCreate } from '@/screens/JobCreate';
 import { Pipeline } from '@/screens/Pipeline';
 import { PostHire } from '@/screens/PostHire';
-import { Tokens } from '@/screens/Tokens';
+import { ReturnGoal } from '@/screens/ReturnGoal';
 import { Company } from './screens/Company';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -291,7 +291,7 @@ function App() {
           )}
           {screen === 'pipeline' && <Pipeline />}
           {screen === 'post-hire' && <PostHire onBack={() => setScreen('jobs')} />}
-          {screen === 'tokens' && <Tokens onNavigate={setScreen} />}
+          {screen === 'return-goal' && <ReturnGoal onNavigate={setScreen} />}
           {screen === 'company' && <Company />}
         </motion.div>
       </AnimatePresence>

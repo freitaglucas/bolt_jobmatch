@@ -4,7 +4,7 @@ import type {
   BatchRequestItem,
   BatchResponse,
 } from '../email/batch-feedback.schemas';
-import { SLA_HOURS } from '../tokens/token-rules';
+import { SLA_HOURS } from '../deadlines/sla';
 import { canReject, getNextStage } from './pipeline-transitions';
 import {
   EMPTY_INSIGHTS,

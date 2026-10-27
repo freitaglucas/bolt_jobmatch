@@ -18,12 +18,11 @@ import {
   Calendar,
   User,
   Briefcase,
-  Coins,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchScoreRing } from '@/components/MatchScoreRing';
-// TODO(mock): dados de exemplo ate a Fase 3 (tokens e SLA) / pos-contratacao.
+// TODO(mock): dados de exemplo ate a pos-contratacao real (N12).
 
 import { mockPostHireRecords, recruiterStats } from '@/lib/mock-data';
 import type { PostHireRecord, PostHireCheckpoint, PostHireFeedback, CheckpointStatus } from '@/lib/types';
@@ -68,11 +67,10 @@ export function PostHire({ onBack }: PostHireProps) {
       </div>
 
       {/* Aggregate metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <MetricCard icon={Briefcase} label="Vagas fechadas" value={String(recruiterStats.closedJobs)} color="text-jm-purple" bg="bg-jm-purple/10" />
         <MetricCard icon={Clock} label="Tempo médio (dias)" value={String(recruiterStats.avgTimeToHire)} color="text-jm-teal" bg="bg-jm-teal/10" />
         <MetricCard icon={DollarSign} label="Custo médio/contratação" value={`R$ ${(recruiterStats.avgCostPerHire / 1000).toFixed(1)}k`} color="text-jm-orange" bg="bg-jm-orange/10" />
-        <MetricCard icon={Coins} label="Tokens ganhos" value={`+${recruiterStats.totalTokensFromHires}`} color="text-jm-purple" bg="bg-jm-purple/10" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

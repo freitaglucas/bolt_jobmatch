@@ -42,7 +42,6 @@ export interface HireInfo {
   timeToHireDays: number;
   costPerHire: number;
   salaryNegotiated: string;
-  tokensEarned: number;
 }
 
 export type PostHirePhase = 'Onboarding' | '30 dias' | '60 dias' | '90 dias' | 'Confirmado';
@@ -164,10 +163,3 @@ export interface PipelineCandidate {
   reserveRenewals?: number; // renovacoes ja usadas na reserva ativa
 }
 
-export interface TokenEvent {
-  id: string;
-  action: string;
-  amount: number;
-  date: string;
-  type: 'earn' | 'spend';
-}

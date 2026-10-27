@@ -458,9 +458,6 @@ isOneToOne: false
 "feedback_sla":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
-"my_token_balance":
-{ Args: Record<PropertyKey, never>; Returns: number
-                           },
 "has_role":
 { Args: { "_role": Database["public"]['Enums']["app_role"],"_user_id": string }; Returns: boolean
                            },
