@@ -21,6 +21,7 @@ import type { Job, SkillRequirement } from '@/lib/types';
 import { ReturnAssurance } from '@/features/return-seal/components/ReturnAssurance';
 import { useReturnSeals } from '@/features/return-seal/hooks';
 import { cn } from '@/lib/utils';
+import { MAX_SKILL_LEVEL, skillLevelName } from '@/features/skills/levels';
 
 interface JobDetailProps {
   job: Job;
@@ -57,14 +58,14 @@ function SkillDetail({ skill }: { skill: SkillRequirement }) {
           )}
         </div>
         <div className="text-xs text-muted-foreground mt-1">
-          Exigido nível {skill.level}{' '}
+          A vaga pede nível {skillLevelName(skill.level).toLocaleLowerCase('pt-BR')}{' '}
           {skill.candidateLevel > 0
-            ? `· Você tem nível ${skill.candidateLevel}`
-            : '· Você não cadastrou esta skill'}
+            ? `· Você informou ${skillLevelName(skill.candidateLevel).toLocaleLowerCase('pt-BR')}`
+            : '· Você não cadastrou esta competência'}
         </div>
         {/* Level bars */}
         <div className="flex gap-1 mt-2">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: MAX_SKILL_LEVEL }).map((_, i) => (
             <div
               key={i}
               className={cn(
@@ -74,7 +75,7 @@ function SkillDetail({ skill }: { skill: SkillRequirement }) {
             />
           ))}
           <div className="w-2" />
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: MAX_SKILL_LEVEL }).map((_, i) => (
             <div
               key={i}
               className={cn(

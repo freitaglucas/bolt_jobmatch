@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { IMPORTANCE_VALUES } from './importance';
 import { SENIORITY_VALUES } from './seniority';
+import { MAX_SKILL_LEVEL, MIN_SKILL_LEVEL } from '../skills/levels';
 
 export const EMPLOYMENT_TYPES = ['CLT', 'PJ', 'Híbrido'] as const;
 
@@ -9,8 +10,8 @@ export const JobSkillInputSchema = z.object({
   requiredLevel: z
     .number()
     .int('O nível deve ser um número inteiro.')
-    .min(1, 'O nível mínimo é 1.')
-    .max(5, 'O nível máximo é 5.'),
+    .min(MIN_SKILL_LEVEL, 'O nível mínimo é básico.')
+    .max(MAX_SKILL_LEVEL, 'O nível máximo é avançado.'),
   mandatory: z.boolean(),
   importance: z
     .enum(IMPORTANCE_VALUES, {

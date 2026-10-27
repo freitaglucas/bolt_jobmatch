@@ -83,9 +83,9 @@ select ok(
 select ok(
   (select bool_and(
       case
-        when j.title ~ 'J.nior' then js.required_level between 1 and 3
-        when j.title ~ 'Pleno' then js.required_level between 2 and 4
-        when j.title ~ 'S.nior' then js.required_level between 3 and 5
+        when j.title ~ 'J.nior' then js.required_level between 1 and 2
+        when j.title ~ 'Pleno' then js.required_level between 1 and 3
+        when j.title ~ 'S.nior' then js.required_level between 2 and 3
         else false
       end
     )

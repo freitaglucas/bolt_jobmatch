@@ -90,7 +90,8 @@ declare
     'Adaptabilidade', 'Mentoria', 'Liderança'
   ];
 
-  v_level_ranges jsonb := '{"Júnior": [1,2,3], "Pleno": [2,3,4], "Sênior": [3,4,5]}'::jsonb;
+  -- Regua de 3 niveis (N30): 1 basico, 2 intermediario, 3 avancado.
+  v_level_ranges jsonb := '{"Júnior": [1,1,2], "Pleno": [1,2,3], "Sênior": [2,3,3]}'::jsonb;
   v_salary_ranges jsonb := '{
     "Júnior": ["R$ 3.500 – R$ 5.000", "R$ 3.800 – R$ 5.200"],
     "Pleno": ["R$ 6.000 – R$ 8.500", "R$ 6.500 – R$ 9.000"],

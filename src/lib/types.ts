@@ -8,8 +8,8 @@ export type SkillStatus = 'match' | 'gap' | 'missing';
 
 export interface SkillRequirement {
   name: string;
-  level: number; // 1-5 required level
-  candidateLevel: number; // 0 = missing, 1-5 = has it
+  level: number; // 1-3 required level (basico, intermediario, avancado)
+  candidateLevel: number; // 0 = missing, 1-3 = has it
   mandatory: boolean;
   weight?: number;
 }
@@ -116,7 +116,7 @@ export interface Application {
 
 export interface CandidateSkill {
   name: string;
-  level: number; // 1-5
+  level: number; // 1-3
 }
 
 export interface WorkExperience {

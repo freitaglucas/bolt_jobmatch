@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SKILL_LEVEL, MIN_SKILL_LEVEL } from '../skills/levels';
 
 export const ContractTypeSchema = z.enum(['CLT', 'PJ', 'Híbrido']);
 
@@ -11,7 +12,7 @@ export const SeniorityOptionSchema = z.enum([
   'Especialista',
 ]);
 
-export const DeclaredLevelSchema = z.number().int().min(1).max(5);
+export const DeclaredLevelSchema = z.number().int().min(MIN_SKILL_LEVEL).max(MAX_SKILL_LEVEL);
 
 export const CandidateSkillDraftSchema = z.object({
   skillId: z.string().uuid(),

@@ -15,15 +15,15 @@ import {
 } from './rejection-reasons';
 
 const JOB: JobSkillInput[] = [
-  { skillName: 'SQL', requiredLevel: 4, weight: 9, mandatory: true },
-  { skillName: 'Power BI', requiredLevel: 3, weight: 6, mandatory: true },
-  { skillName: 'Python', requiredLevel: 3, weight: 5, mandatory: false },
-  { skillName: 'Storytelling', requiredLevel: 2, weight: 3, mandatory: false },
+  { skillName: 'SQL', requiredLevel: 3, weight: 9, mandatory: true },
+  { skillName: 'Power BI', requiredLevel: 2, weight: 6, mandatory: true },
+  { skillName: 'Python', requiredLevel: 2, weight: 5, mandatory: false },
+  { skillName: 'Storytelling', requiredLevel: 1, weight: 3, mandatory: false },
 ];
 
 describe('buildMatchInsights', () => {
   it('lists only mandatory skills the candidate did not inform as missing', () => {
-    const insights = buildMatchInsights(JOB, [{ skillName: 'Python', declaredLevel: 4 }]);
+    const insights = buildMatchInsights(JOB, [{ skillName: 'Python', declaredLevel: 3 }]);
     expect(insights.missing).toEqual(['SQL', 'Power BI']);
     expect(insights.below).toEqual([]);
     expect(insights.strengths).toEqual(['Python']);
@@ -31,31 +31,31 @@ describe('buildMatchInsights', () => {
 
   it('flags skills informed below the required level, biggest gap first', () => {
     const insights = buildMatchInsights(JOB, [
-      { skillName: 'SQL', declaredLevel: 2 },
-      { skillName: 'Power BI', declaredLevel: 2 },
+      { skillName: 'SQL', declaredLevel: 1 },
+      { skillName: 'Power BI', declaredLevel: 1 },
       { skillName: 'Python', declaredLevel: 1 },
     ]);
     expect(insights.missing).toEqual([]);
     expect(insights.below).toEqual([
-      { skill: 'SQL', required: 4, declared: 2 },
-      { skill: 'Power BI', required: 3, declared: 2 },
-      { skill: 'Python', required: 3, declared: 1 },
+      { skill: 'SQL', required: 3, declared: 1 },
+      { skill: 'Power BI', required: 2, declared: 1 },
+      { skill: 'Python', required: 2, declared: 1 },
     ]);
   });
 
   it('counts the required level or more as a strength, heaviest first', () => {
     const insights = buildMatchInsights(JOB, [
-      { skillName: 'sql ', declaredLevel: 5 },
-      { skillName: 'Storytelling', declaredLevel: 2 },
-      { skillName: 'Power BI', declaredLevel: 3 },
+      { skillName: 'sql ', declaredLevel: 3 },
+      { skillName: 'Storytelling', declaredLevel: 1 },
+      { skillName: 'Power BI', declaredLevel: 2 },
     ]);
     expect(insights.strengths).toEqual(['SQL', 'Power BI', 'Storytelling']);
   });
 
   it('ignores optional skills the candidate did not inform', () => {
     const insights = buildMatchInsights(JOB, [
-      { skillName: 'SQL', declaredLevel: 4 },
-      { skillName: 'Power BI', declaredLevel: 3 },
+      { skillName: 'SQL', declaredLevel: 3 },
+      { skillName: 'Power BI', declaredLevel: 2 },
     ]);
     expect(insights.missing).toEqual([]);
     expect(insights.below).toEqual([]);
@@ -126,11 +126,11 @@ describe('helpers', () => {
   });
 
   it('describes levels with words and clamps odd values', () => {
-    expect(levelLabel(1)).toBe('iniciante');
-    expect(levelLabel(3)).toBe('intermediário');
-    expect(levelLabel(5)).toBe('especialista');
-    expect(levelLabel(0)).toBe('iniciante');
-    expect(levelLabel(9)).toBe('especialista');
+    expect(levelLabel(1)).toBe('básico');
+    expect(levelLabel(2)).toBe('intermediário');
+    expect(levelLabel(3)).toBe('avançado');
+    expect(levelLabel(0)).toBe('básico');
+    expect(levelLabel(9)).toBe('avançado');
   });
 });
 
@@ -138,9 +138,9 @@ describe('buildRejectionBody', () => {
   const insights: MatchInsights = {
     missing: ['SQL', 'Power BI', 'Python', 'Excel'],
     below: [
-      { skill: 'SQL', required: 4, declared: 2 },
-      { skill: 'Python', required: 3, declared: 1 },
-      { skill: 'Excel', required: 3, declared: 2 },
+      { skill: 'SQL', required: 3, declared: 1 },
+      { skill: 'Python', required: 2, declared: 1 },
+      { skill: 'Excel', required: 2, declared: 1 },
     ],
     strengths: ['Storytelling', 'Comunicação', 'Liderança', 'Negociação'],
   };
@@ -158,7 +158,7 @@ describe('buildRejectionBody', () => {
   it('cites the skill with the informed and the required level, in words', () => {
     const body = buildRejectionBody({ ...input, reason: 'level_below' });
     expect(body).toContain('em SQL o seu nível é básico e a vaga pede nível avançado');
-    expect(body).toContain('em Python o seu nível é iniciante e a vaga pede nível intermediário');
+    expect(body).toContain('em Python o seu nível é básico e a vaga pede nível intermediário');
     expect(body).not.toContain('Excel');
   });
 

@@ -75,7 +75,7 @@ describe('buildJobSkillRows weights', () => {
   it('turns importance into the weight of each job_skills row', () => {
     expect(
       buildJobSkillRows('job-1', [
-        { skillId: SKILL_A, requiredLevel: 4, mandatory: true, importance: 'high' },
+        { skillId: SKILL_A, requiredLevel: 3, mandatory: true, importance: 'high' },
         { skillId: SKILL_B, requiredLevel: 3, mandatory: false, importance: 'medium' },
         { skillId: SKILL_C, requiredLevel: 3, mandatory: false, importance: 'low' },
       ]).map((row) => row.weight),
@@ -84,7 +84,7 @@ describe('buildJobSkillRows weights', () => {
 
   it('keeps weight 1 when importance is not informed', () => {
     const rows = buildJobSkillRows('job-1', [
-      { skillId: SKILL_A, requiredLevel: 4, mandatory: false },
+      { skillId: SKILL_A, requiredLevel: 3, mandatory: false },
     ]);
     expect(rows[0].weight).toBe(1);
   });

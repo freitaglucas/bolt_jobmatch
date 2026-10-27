@@ -19,6 +19,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MAX_SKILL_LEVEL, skillLevelName } from '@/features/skills/levels';
 import { useAuth } from '@/features/auth/hooks';
 import {
   useMyCandidateProfile,
@@ -60,18 +61,12 @@ function SkillBar({
   level: number;
   evidenced: boolean;
 }) {
-  const colors = [
-    'bg-jm-red',
-    'bg-jm-orange',
-    'bg-jm-orange',
-    'bg-jm-teal',
-    'bg-jm-purple',
-  ];
+  const colors = ['bg-jm-orange', 'bg-jm-teal', 'bg-jm-purple'];
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm w-40 md:w-52 truncate">{name}</span>
       <div className="flex-1 flex gap-1">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: MAX_SKILL_LEVEL }).map((_, index) => (
           <div
             key={index}
             className={cn(
@@ -81,8 +76,8 @@ function SkillBar({
           />
         ))}
       </div>
-      <span className="text-xs text-muted-foreground w-8 text-right">
-        Nv {level}
+      <span className="text-xs text-muted-foreground w-24 text-right">
+        {skillLevelName(level)}
       </span>
       {evidenced && (
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-jm-teal/15 text-jm-teal">

@@ -7,7 +7,7 @@ const createJobSkill = (overrides: Partial<JobSkill> = {}): JobSkill => ({
   id: 'job-skill-1',
   job_id: 'job-1',
   skill_name: 'TypeScript',
-  required_level: 4,
+  required_level: 2,
   weight: 10,
   mandatory: false,
   ...overrides,
@@ -17,7 +17,7 @@ const createCandidateSkill = (
   overrides: Partial<CandidateSkill> = {},
 ): CandidateSkill => ({
   skill_name: 'TypeScript',
-  declared_level: 2,
+  declared_level: 1,
   evidenced_by_project: false,
   ...overrides,
 });
@@ -31,7 +31,7 @@ describe('calculateMatch', () => {
 
     expect(result.score).toBe(50);
     expect(result.factors[0].partial).toBe(5);
-    expect(result.factors[0].gap).toBe(2);
+    expect(result.factors[0].gap).toBe(1);
   });
 
   it('does not penalize an absent optional skill', () => {
@@ -41,7 +41,7 @@ describe('calculateMatch', () => {
     expect(result.factors[0]).toMatchObject({
       declared: 0,
       partial: 0,
-      gap: 4,
+      gap: 2,
       mandatory: false,
     });
   });
@@ -56,18 +56,18 @@ describe('calculateMatch', () => {
       }),
     ];
     const candidateSkills = [
-      createCandidateSkill({ declared_level: 4 }),
+      createCandidateSkill({ declared_level: 2 }),
     ];
 
     expect(calculateMatch(skills, candidateSkills).score).toBe(25);
   });
 
-  it('applies project evidence bonus and caps the candidate level at five', () => {
+  it('applies project evidence bonus and caps the candidate level at three', () => {
     const result = calculateMatch(
-      [createJobSkill({ required_level: 5 })],
+      [createJobSkill({ required_level: 3 })],
       [
         createCandidateSkill({
-          declared_level: 5,
+          declared_level: 3,
           evidenced_by_project: true,
         }),
       ],
@@ -75,7 +75,7 @@ describe('calculateMatch', () => {
 
     expect(result.score).toBe(100);
     expect(result.factors[0]).toMatchObject({
-      declared: 5,
+      declared: 3,
       partial: 10,
     });
   });
@@ -87,7 +87,7 @@ describe('calculateMatch', () => {
   it('returns zero when the sum of skill weights is zero', () => {
     const result = calculateMatch(
       [createJobSkill({ weight: 0 })],
-      [createCandidateSkill({ declared_level: 4 })],
+      [createCandidateSkill({ declared_level: 2 })],
     );
 
     expect(result.score).toBe(0);
@@ -100,7 +100,7 @@ describe('calculateMatch', () => {
       [
         createCandidateSkill({
           skill_name: 'typescript',
-          declared_level: 4,
+          declared_level: 2,
         }),
       ],
     );
