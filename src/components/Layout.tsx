@@ -17,7 +17,7 @@ export type Screen =
   | 'job-create'
   | 'pipeline'
   | 'post-hire'
-  | 'tokens'
+  | 'return-goal'
   | 'company';
 
 interface LayoutProps {
@@ -40,7 +40,7 @@ const recruiterNav: { screen: Screen; label: string }[] = [
   { screen: 'dashboard', label: 'Dashboard' },
   { screen: 'jobs', label: 'Vagas' },
   { screen: 'pipeline', label: 'Pipeline' },
-  { screen: 'tokens', label: 'Retorno no prazo' },
+  { screen: 'return-goal', label: 'Retorno no prazo' },
   { screen: 'company', label: 'Minha empresa' },
 ]
 

@@ -18,7 +18,7 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 - [x] **1. N1A** (Governança): AGENTS.md alinhado ao guia de premissas e ao backlog v3 — 2 h · Must · concluído no PR do N1A + N1
 - [x] **2. N1** (Governança): Unificar backlog e CONTEXTO com o código — 4 h · Must · concluído no PR do N1A + N1
 - [ ] **3. NOVO-5** (Fundação): Ambiente do Beta conferido: migrations de 21/10 e 22/10 e send-email em produção, APP_URL, EMAIL_FROM, plano do Resend, confirmação de e-mail, região do Supabase — 4 h · Must
-- [ ] **4. NOVO-7** (Governança): Limpeza dos restos de tokens — 3 h · Should
+- [x] **4. NOVO-7** (Governança): Limpeza dos restos de tokens — 3 h · Should
 - [ ] **5. N59** (Qualidade): Teste de renderização do App: gates montados por papel — 8 h · Should
 
 ### B1 · Match v2 e catálogo (~228 h)

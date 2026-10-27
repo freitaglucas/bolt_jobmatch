@@ -1,4 +1,4 @@
-import { SLA_HOURS } from '../tokens/token-rules';
+import { SLA_HOURS } from '../deadlines/sla';
 
 // Espelham return_seal_min_returns() e return_seal_window_days() do banco
 // (N65); o teste seal-rules.test.ts trava os valores.

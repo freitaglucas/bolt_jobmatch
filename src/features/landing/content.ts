@@ -1,8 +1,6 @@
 import { MAX_POSTPONES_PER_STAGE } from '../applications/batch-feedback';
 import { GOAL_PERCENT } from '../feedback-goal/goal-rules';
-import { SLA_HOURS } from '../tokens/token-rules';
-
-const SLA_DAYS = SLA_HOURS / 24;
+import { SLA_DAYS } from '../deadlines/sla';
 
 export interface LandingPoint {
   title: string;

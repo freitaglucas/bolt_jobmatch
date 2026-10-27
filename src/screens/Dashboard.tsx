@@ -31,7 +31,7 @@ import {
   summarizeGoal,
 } from '../features/feedback-goal/goal-rules';
 import { useGoalAttainment } from '../features/feedback-goal/hooks';
-import { SLA_HOURS } from '../features/tokens/token-rules';
+import { SLA_HOURS } from '../features/deadlines/sla';
 import { cn } from '../lib/utils';
 
 interface DashboardProps {
@@ -184,7 +184,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <Button variant="outline" size="sm" onClick={() => onNavigate('pipeline')}>
               Ver no Pipeline
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => onNavigate('tokens')}>
+            <Button variant="ghost" size="sm" onClick={() => onNavigate('return-goal')}>
               Ver a meta
             </Button>
           </div>
@@ -270,7 +270,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
         <Card
           className="border-border cursor-pointer hover:border-primary/30 transition-all group"
-          onClick={() => onNavigate('tokens')}
+          onClick={() => onNavigate('return-goal')}
         >
           <CardContent className="p-6 flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-jm-teal/10 flex items-center justify-center">

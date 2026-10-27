@@ -3,7 +3,6 @@ import type {
   Application,
   CandidateProfile,
   PipelineCandidate,
-  TokenEvent,
   PostHireRecord,
 } from './types';
 
@@ -180,7 +179,6 @@ export const mockRecruiterJobs: Job[] = [
       timeToHireDays: 28,
       costPerHire: 4200,
       salaryNegotiated: 'R$ 12.000',
-      tokensEarned: 100,
     },
   },
   {
@@ -211,7 +209,6 @@ export const mockRecruiterJobs: Job[] = [
       timeToHireDays: 45,
       costPerHire: 6800,
       salaryNegotiated: 'R$ 22.000',
-      tokensEarned: 150,
     },
   },
   {
@@ -241,7 +238,6 @@ export const mockRecruiterJobs: Job[] = [
       timeToHireDays: 22,
       costPerHire: 3100,
       salaryNegotiated: 'R$ 6.500',
-      tokensEarned: 80,
     },
   },
 ];
@@ -494,24 +490,14 @@ export const mockPipelineCandidates: PipelineCandidate[] = [
   { id: 'c8', name: 'Henrique Dias', role: 'Gestor de Inovação', seniority: 'Senior', matchScore: 82, appliedDate: '27 Set', stage: 'Aprovado', avatarColor: 'bg-jm-teal' },
 ];
 
-export const mockTokenEvents: TokenEvent[] = [
-  { id: 't1', action: 'Candidatura qualificada recebida', amount: 20, date: '27 Set', type: 'earn' },
-  { id: 't2', action: 'Match de alta compatibilidade', amount: 15, date: '26 Set', type: 'earn' },
-  { id: 't3', action: 'Vaga promovida em destaque', amount: 50, date: '25 Set', type: 'spend' },
-  { id: 't4', action: 'Candidatura finalizada com sucesso', amount: 30, date: '24 Set', type: 'earn' },
-  { id: 't5', action: 'Acesso a banco de talentos premium', amount: 40, date: '23 Set', type: 'spend' },
-];
-
 export const recruiterStats = {
   activeJobs: 12,
   totalApplications: 48,
   newApplications: 8,
   interviews: 5,
-  tokenBalance: 340,
   closedJobs: 3,
   avgTimeToHire: 32,
   avgCostPerHire: 4700,
-  totalTokensFromHires: 330,
 };
 
 export function getScoreBgColor(score: number): string {

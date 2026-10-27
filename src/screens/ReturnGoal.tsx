@@ -14,9 +14,7 @@ import { GoalPanel } from '../features/feedback-goal/components/GoalPanel';
 import { DISCOUNT_PERCENT, GOAL_PERCENT, sumGoalRows } from '../features/feedback-goal/goal-rules';
 import { useGoalAttainment } from '../features/feedback-goal/hooks';
 import { useRecruiterJobs } from '../features/jobs/recruiter-jobs.hooks';
-import { SLA_HOURS } from '../features/tokens/token-rules';
-
-const SLA_DAYS = SLA_HOURS / 24;
+import { SLA_DAYS } from '../features/deadlines/sla';
 
 const HIGHLIGHTS = [
   {
@@ -43,12 +41,12 @@ const RULES = [
   'O índice do mês conta os prazos já cumpridos e os que venceram sem retorno. Prazo aberto ainda dentro do prazo não entra na conta.',
 ];
 
-interface TokensProps {
+interface ReturnGoalProps {
   onNavigate: (screen: Screen) => void;
 }
 
-// Tela "Retorno no prazo" (o arquivo ainda se chama Tokens por historico).
-export function Tokens({ onNavigate }: TokensProps) {
+// Tela "Retorno no prazo".
+export function ReturnGoal({ onNavigate }: ReturnGoalProps) {
   const goalQuery = useGoalAttainment();
   const jobsQuery = useRecruiterJobs();
 
