@@ -1,4 +1,5 @@
 import type { JobSkill } from '../../jobs/types';
+import { MAX_SKILL_LEVEL } from '../../skills/levels';
 import type { CandidateSkill, MatchFactor, MatchResult } from '../types';
 
 const roundToTwoDecimals = (value: number): number =>
@@ -25,7 +26,7 @@ export function calculateMatch(
     );
     const declaredLevel = candidateSkill?.declared_level ?? 0;
     const candidateLevel = candidateSkill?.evidenced_by_project
-      ? Math.min(5, declaredLevel * 1.15)
+      ? Math.min(MAX_SKILL_LEVEL, declaredLevel * 1.15)
       : declaredLevel;
     const partialScore =
       jobSkill.weight *

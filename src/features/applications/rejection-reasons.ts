@@ -3,6 +3,8 @@
 // perfil, a recrutadora confirma por grupo e cada candidato recebe a propria
 // mensagem. Nunca leva numero ou score.
 
+import { skillLevelName } from '../skills/levels';
+
 // Os codigos precisam ser iguais aos de feedbacks_reason_code_check (migration
 // 20261008000000_feedback_deadlines.sql) e aos de _shared/batch-feedback.ts.
 export const REASON_CODES = [
@@ -32,12 +34,9 @@ export const REASON_HINTS: Record<ReasonCode, string> = {
   job_closed: 'Aviso neutro de que a vaga foi encerrada.',
 };
 
-// Escala atual de 1 a 5 (ate o N30 trazer a regua de 3 niveis).
-const LEVEL_LABELS = ['iniciante', 'básico', 'intermediário', 'avançado', 'especialista'] as const;
-
+// Regua de 3 niveis (N30), em minusculas para caber no meio da frase.
 export function levelLabel(level: number): string {
-  const index = Math.min(5, Math.max(1, Math.round(level))) - 1;
-  return LEVEL_LABELS[index] ?? LEVEL_LABELS[0];
+  return skillLevelName(level).toLocaleLowerCase('pt-BR');
 }
 
 export interface JobSkillInput {

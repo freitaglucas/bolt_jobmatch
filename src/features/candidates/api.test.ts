@@ -81,7 +81,7 @@ function makeSkills(): CandidateSkillSelection[] {
       skillId: uuid(2),
       name: 'Node.js',
       category: 'hard',
-      declaredLevel: 4,
+      declaredLevel: 3,
       evidencedByProject: false,
     },
     {
@@ -161,7 +161,7 @@ describe('getMyCandidateProfile', () => {
         return buildChain({
           data: [
             { skill_id: uuid(1), declared_level: 3, evidenced_by_project: true },
-            { skill_id: uuid(2), declared_level: 4, evidenced_by_project: false },
+            { skill_id: uuid(2), declared_level: 3, evidenced_by_project: false },
             { skill_id: uuid(3), declared_level: 2, evidenced_by_project: false },
           ],
           error: null,
@@ -219,7 +219,7 @@ describe('getMyCandidateProfile', () => {
         return buildChain({
           data: [
             { skill_id: uuid(1), declared_level: 3, evidenced_by_project: true },
-            { skill_id: uuid(2), declared_level: 4, evidenced_by_project: false },
+            { skill_id: uuid(2), declared_level: 3, evidenced_by_project: false },
             { skill_id: uuid(3), declared_level: 2, evidenced_by_project: false },
           ],
           error: null,

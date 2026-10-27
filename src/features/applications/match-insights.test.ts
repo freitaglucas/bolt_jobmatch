@@ -15,21 +15,21 @@ describe('buildInsightsByApplication', () => {
         { id: 'app-2', job_id: 'job-1', candidate_id: 'cand-2' },
       ],
       jobSkills: [
-        { job_id: 'job-1', skill_id: 's1', required_level: 4, weight: '9.00', mandatory: true },
-        { job_id: 'job-1', skill_id: 's2', required_level: 3, weight: 6, mandatory: true },
-        { job_id: 'job-2', skill_id: 's3', required_level: 3, weight: 5, mandatory: true },
+        { job_id: 'job-1', skill_id: 's1', required_level: 3, weight: '9.00', mandatory: true },
+        { job_id: 'job-1', skill_id: 's2', required_level: 2, weight: 6, mandatory: true },
+        { job_id: 'job-2', skill_id: 's3', required_level: 2, weight: 5, mandatory: true },
       ],
       candidateSkills: [
-        { candidate_id: 'cand-1', skill_id: 's1', declared_level: 2 },
-        { candidate_id: 'cand-1', skill_id: 's2', declared_level: 3 },
-        { candidate_id: 'cand-2', skill_id: 's3', declared_level: 5 },
+        { candidate_id: 'cand-1', skill_id: 's1', declared_level: 1 },
+        { candidate_id: 'cand-1', skill_id: 's2', declared_level: 2 },
+        { candidate_id: 'cand-2', skill_id: 's3', declared_level: 3 },
       ],
       skills,
     });
 
     expect(result['app-1']).toEqual({
       missing: [],
-      below: [{ skill: 'SQL', required: 4, declared: 2 }],
+      below: [{ skill: 'SQL', required: 3, declared: 1 }],
       strengths: ['Power BI'],
     });
     expect(result['app-2']).toEqual({ missing: ['SQL', 'Power BI'], below: [], strengths: [] });

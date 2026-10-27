@@ -133,8 +133,10 @@ Regra de operação: configuração, nunca código por cliente.
 20. Conventional Commits, em português.
 
 ## Domínio
-- Match score: 0–100 por item da vaga, determinístico. Hoje: nível 1–5 e
-  importância em 3 níveis. Fórmula v2 no B1: régua de 3 níveis, tipos de item
+- Régua de nível: sempre 3 níveis, 1 básico, 2 intermediário, 3 avançado (N30),
+  com descritor em `src/features/skills/levels.ts`. Não existe nível 4 ou 5.
+- Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
+  e importância em 3 níveis. Fórmula v2 no B1: tipos de item
   (competência, ferramenta, requisito sim/não, traço fora do score), papel na
   vaga (obrigatório 1,0, implícito 0,5, desejável até +15%), grupos "1 de",
   sinônimos e famílias.

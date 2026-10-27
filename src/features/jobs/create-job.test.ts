@@ -93,8 +93,8 @@ describe('CreateJobSchema', () => {
     expect(CreateJobSchema.safeParse(validInput({ skills })).success).toBe(false);
   });
 
-  it('rejects a level above 5', () => {
-    const skills = [{ skillId: SKILL_A, requiredLevel: 6, mandatory: true }];
+  it('rejects a level above 3 (avancado)', () => {
+    const skills = [{ skillId: SKILL_A, requiredLevel: 4, mandatory: true }];
     expect(CreateJobSchema.safeParse(validInput({ skills })).success).toBe(false);
   });
 

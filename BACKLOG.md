@@ -21,9 +21,9 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 - [x] **4. NOVO-7** (Governança): Limpeza dos restos de tokens — 3 h · Should
 - [x] **5. N59** (Qualidade): Teste de renderização do App: gates montados por papel — 8 h · Should
 
-### B1 · Match v2 e catálogo (~228 h)
+### B1 · Match v2 e catálogo (~258 h)
 
-- [ ] **6. N30** (Match): Régua de 3 níveis (básico, intermediário, avançado) com descritor por nível — 25 h · Must
+- [x] **6. N30** (Match): Régua de 3 níveis (básico, intermediário, avançado) com descritor por nível — 25 h · Must
 - [ ] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must
 - [ ] **8. N35** (Match): Importância em 3 níveis (substitui 1–5) — parcial · 2 h · Must
 - [ ] **9. N33** (Match): Grupos de alternativas ("1 de: AWS, GCP, Azure"; "2 de 4") — 25 h · Must
@@ -35,14 +35,14 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 - [ ] **15. NOVO-3** (Match): Foto do perfil em cada candidatura; recalcular o score só quando muda o catálogo (curadoria) ou a vaga — 8 h · Must
 - [ ] **16. N36** (Match): Faixas de compatibilidade para o candidato (altíssima, alta, compatível, não compatível) pela cobertura do núcleo; score numérico com fatores para o recrutador — 20 h · Must
 - [ ] **17. N39** (Match): Senioridade como rótulo da empresa, fora do score — parcial · 1 h · Should
-- [ ] **18. N90** (Match): Origem de cada item em duas classes (veio do currículo × acrescentado pelo candidato) e nível sugerido por regra de tempo e recência — 12 h · Should
+- [ ] **18. N95** (Candidato): Currículo por experiência: candidate_experiences, itens por experiência com trecho de evidência, formação e idiomas; tempo por competência pela união de períodos — 30 h · Must · subiu do B2 em 26/10: as experiências nascem antes da regra de nível do N90
+- [ ] **19. N90** (Match): Origem de cada item em duas classes (veio do currículo × acrescentado pelo candidato) e nível sugerido por regra de tempo e recência — 12 h · Should
 
-### B2 · Do link à candidatura (~172 h)
+### B2 · Do link à candidatura (~142 h)
 
-- [ ] **19. NOVO-4** (Compliance): LGPD do currículo: consentimento próprio para a IA ler o texto, não guardar o PDF (leitura no navegador) e política de retenção — 5 h · Must
-- [ ] **20. NOVO-1** (Vagas): Página pública da vaga com rota por URL (/vaga/<id>), leitura anônima mínima, prévia no LinkedIn e evento "abriu a vaga" sem login — 15 h · Must
-- [ ] **21. 3.5** (Vagas): Página completa da vaga — parcial · 3 h · Should
-- [ ] **22. N95** (Candidato): Currículo por experiência: candidate_experiences, itens por experiência com trecho de evidência, formação e idiomas; tempo por competência pela união de períodos — 30 h · Must
+- [ ] **20. NOVO-4** (Compliance): LGPD do currículo: consentimento próprio para a IA ler o texto, não guardar o PDF (leitura no navegador) e política de retenção — 5 h · Must
+- [ ] **21. NOVO-1** (Vagas): Página pública da vaga com rota por URL (/vaga/<id>), leitura anônima mínima, prévia no LinkedIn e evento "abriu a vaga" sem login — 15 h · Must
+- [ ] **22. 3.5** (Vagas): Página completa da vaga — parcial · 3 h · Should
 - [ ] **23. N88** (Match): Leitura do currículo: layout do PDF do LinkedIn no navegador (sem IA), edge function enrich-cv (uma chamada de IA por currículo) e map-skills (sinônimo exato → semelhança de texto → IA escolhe entre 5 → fila) — 55 h · Must
 - [ ] **24. N96** (Candidato): Pontos fortes: 3 slots, lista fechada de ~15 traços com descrição curta, pré-preenchidos pelo currículo ou pela função anterior; o candidato troca com um toque; fora do score; o recrutador vê "x de 3 em comum" e pode filtrar — 12 h · Must
 - [ ] **25. N89** (Match): Candidatura em até 3 minutos pelo celular: página da vaga → currículo → uma tela de revisão pré-preenchida (experiências, competências, pontos fortes, requisitos sim/não da vaga) → conta no fim → candidatar — 35 h · Must

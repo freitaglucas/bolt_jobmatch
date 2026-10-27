@@ -20,6 +20,12 @@ import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSkillCatalog } from '../hooks';
 import {
+  DEFAULT_SKILL_LEVEL,
+  SKILL_LEVELS,
+  skillLevelDescriptor,
+  skillLevelName,
+} from '../../skills/levels';
+import {
   CandidateIdentitySchema,
   SaveCandidateProfileSchema,
 } from '../schemas';
@@ -89,7 +95,7 @@ export function CandidateProfileForm({
     (initialValues?.skills ?? []).map((skill) => ({ ...skill })),
   );
   const [pendingSkillId, setPendingSkillId] = useState('');
-  const [pendingLevel, setPendingLevel] = useState('3');
+  const [pendingLevel, setPendingLevel] = useState(String(DEFAULT_SKILL_LEVEL));
   const [pendingEvidence, setPendingEvidence] = useState(false);
 
   const [desiredPositions, setDesiredPositions] = useState<string[]>(
@@ -213,7 +219,7 @@ export function CandidateProfileForm({
       },
     ]);
     setPendingSkillId('');
-    setPendingLevel('3');
+    setPendingLevel(String(DEFAULT_SKILL_LEVEL));
     setPendingEvidence(false);
   };
 
@@ -326,8 +332,8 @@ export function CandidateProfileForm({
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Escolha ao menos 3 competências, separando técnicas (hard) de
-              comportamentais (soft). Indique seu nível (1 a 5) e se comprova com
-              algum projeto.
+              comportamentais (soft). Indique seu nível (básico, intermediário ou
+              avançado) e se comprova com algum projeto.
             </p>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -353,13 +359,16 @@ export function CandidateProfileForm({
                     <SelectValue placeholder="Nível" />
                   </SelectTrigger>
                   <SelectContent>
-                    {['1', '2', '3', '4', '5'].map((level) => (
-                      <SelectItem key={level} value={level}>
-                        Nível {level}
+                    {SKILL_LEVELS.map((level) => (
+                      <SelectItem key={level} value={String(level)}>
+                        {skillLevelName(level)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {skillLevelDescriptor(Number(pendingLevel))}
+                </p>
               </div>
             </div>
 
@@ -620,7 +629,7 @@ function SelectedSkillList({
                     : 'bg-muted text-muted-foreground',
                 )}
               >
-                Nv {skill.declaredLevel}
+                {skillLevelName(skill.declaredLevel)}
               </span>
               {skill.evidencedByProject && (
                 <span className="text-xs text-jm-purple">projeto</span>

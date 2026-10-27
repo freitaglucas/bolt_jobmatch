@@ -42,6 +42,13 @@ import {
 import { useRecruiterOnboarding } from '@/features/recruiters/hooks';
 import { useSkillsCatalog } from '@/features/skills/hooks';
 import { filterSkills } from '@/features/skills/search';
+import {
+  DEFAULT_SKILL_LEVEL,
+  MAX_SKILL_LEVEL,
+  SKILL_LEVELS,
+  skillLevelDescriptor,
+  skillLevelName,
+} from '@/features/skills/levels';
 
 interface JobCreateProps {
   onBack: () => void;
@@ -125,7 +132,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         skillId: skill.id,
         name: skill.name,
         category: skill.category,
-        requiredLevel: 3,
+        requiredLevel: DEFAULT_SKILL_LEVEL,
         mandatory: false,
         importance: DEFAULT_IMPORTANCE,
       },
@@ -529,25 +536,31 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                           </div>
 
                           {/* Level selector */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground shrink-0">Nível exigido:</span>
-                            <div className="flex gap-1">
-                              {[1, 2, 3, 4, 5].map((lvl) => (
-                                <button
-                                  key={lvl}
-                                  type="button"
-                                  onClick={() => updateSkill(skill.skillId, { requiredLevel: lvl })}
-                                  className={cn(
-                                    'w-7 h-7 rounded-lg text-xs font-bold transition-all',
-                                    skill.requiredLevel >= lvl
-                                      ? 'bg-gradient-purple-teal text-white'
-                                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
-                                  )}
-                                >
-                                  {lvl}
-                                </button>
-                              ))}
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-muted-foreground shrink-0">Nível exigido:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {SKILL_LEVELS.map((lvl) => (
+                                  <button
+                                    key={lvl}
+                                    type="button"
+                                    aria-pressed={skill.requiredLevel === lvl}
+                                    onClick={() => updateSkill(skill.skillId, { requiredLevel: lvl })}
+                                    className={cn(
+                                      'h-7 px-2.5 rounded-lg text-xs font-semibold transition-all',
+                                      skill.requiredLevel === lvl
+                                        ? 'bg-gradient-purple-teal text-white'
+                                        : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                                    )}
+                                  >
+                                    {skillLevelName(lvl)}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
+                            <p className="text-xs text-muted-foreground">
+                              {skillLevelDescriptor(skill.requiredLevel)}
+                            </p>
                           </div>
 
                           {/* Importance selector */}
@@ -670,7 +683,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             Importância {IMPORTANCE_LABELS[skill.importance]}
                           </span>
                           <div className="flex gap-1">
-                            {Array.from({ length: 5 }).map((_, j) => (
+                            {Array.from({ length: MAX_SKILL_LEVEL }).map((_, j) => (
                               <div
                                 key={j}
                                 className={cn(

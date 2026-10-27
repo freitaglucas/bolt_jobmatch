@@ -7,7 +7,7 @@ import {
 
 const skill = (n: number) => ({
   skillId: `00000000-0000-0000-0000-00000000000${n}`,
-  declaredLevel: 3,
+  declaredLevel: 2,
   evidencedByProject: false,
 });
 
@@ -30,14 +30,14 @@ function validInput() {
 }
 
 describe('DeclaredLevelSchema', () => {
-  it('accepts levels between 1 and 5', () => {
+  it('accepts levels between 1 and 3', () => {
     expect(() => DeclaredLevelSchema.parse(1)).not.toThrow();
-    expect(() => DeclaredLevelSchema.parse(5)).not.toThrow();
+    expect(() => DeclaredLevelSchema.parse(3)).not.toThrow();
   });
 
-  it('rejects levels outside 1-5', () => {
+  it('rejects levels outside 1-3', () => {
     expect(() => DeclaredLevelSchema.parse(0)).toThrow();
-    expect(() => DeclaredLevelSchema.parse(6)).toThrow();
+    expect(() => DeclaredLevelSchema.parse(4)).toThrow();
   });
 });
 

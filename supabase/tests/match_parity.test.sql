@@ -1,4 +1,4 @@
--- pgTAP: paridade do Match Score (item N2)
+-- pgTAP: paridade do Match Score (item N2; regua de 3 niveis desde o N30)
 --
 -- Roda dentro do job `db-tests` do CI via `supabase test db`.
 --
@@ -44,8 +44,8 @@ insert into public.skills (name, category) values
 
 -- Monta a vaga e as competencias do candidato a partir de dois JSON e devolve
 -- o score calculado pelo banco.
---   p_job_skills:       [{"skill":"A","level":4,"weight":1,"mandatory":true}, ...]
---   p_candidate_skills: [{"skill":"A","level":3,"evidenced":false}, ...]
+--   p_job_skills:       [{"skill":"A","level":3,"weight":1,"mandatory":true}, ...]
+--   p_candidate_skills: [{"skill":"A","level":2,"evidenced":false}, ...]
 create function pg_temp.parity_score(p_job_skills jsonb, p_candidate_skills jsonb)
 returns numeric
 language plpgsql
@@ -84,61 +84,61 @@ $fn$;
 -- Casos
 -- ---------------------------------------------------------------------
 
--- parity-case: same_weights expected=58.33
+-- parity-case: same_weights expected=55.56
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":4,"weight":1,"mandatory":true},{"skill":"B","level":3,"weight":1,"mandatory":false},{"skill":"C","level":3,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":3,"evidenced":false},{"skill":"B","level":3,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":true},{"skill":"B","level":2,"weight":1,"mandatory":false},{"skill":"C","level":2,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":2,"evidenced":false},{"skill":"B","level":2,"evidenced":false}]'::jsonb
   ),
-  58.33::numeric,
+  55.56::numeric,
   'paridade: same_weights'
 );
 
--- parity-case: importance_weights expected=66.67
+-- parity-case: importance_weights expected=62.96
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":4,"weight":1,"mandatory":true},{"skill":"B","level":3,"weight":0.75,"mandatory":false},{"skill":"C","level":3,"weight":0.5,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":3,"evidenced":false},{"skill":"B","level":3,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":true},{"skill":"B","level":2,"weight":0.75,"mandatory":false},{"skill":"C","level":2,"weight":0.5,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":2,"evidenced":false},{"skill":"B","level":2,"evidenced":false}]'::jsonb
   ),
-  66.67::numeric,
+  62.96::numeric,
   'paridade: importance_weights'
 );
 
--- parity-case: mandatory_low_level expected=62.5
+-- parity-case: mandatory_low_level expected=66.67
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":4,"weight":1,"mandatory":true},{"skill":"B","level":3,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":1,"evidenced":false},{"skill":"B","level":3,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":true},{"skill":"B","level":2,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":1,"evidenced":false},{"skill":"B","level":2,"evidenced":false}]'::jsonb
   ),
-  62.5::numeric,
+  66.67::numeric,
   'paridade: mandatory_low_level'
 );
 
 -- parity-case: mandatory_absent expected=25
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":4,"weight":1,"mandatory":true},{"skill":"B","level":3,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"B","level":3,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":true},{"skill":"B","level":2,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"B","level":2,"evidenced":false}]'::jsonb
   ),
   25::numeric,
   'paridade: mandatory_absent'
 );
 
--- parity-case: evidence_bonus expected=92
+-- parity-case: evidence_bonus expected=76.67
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":5,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":4,"evidenced":true}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":2,"evidenced":true}]'::jsonb
   ),
-  92::numeric,
+  76.67::numeric,
   'paridade: evidence_bonus'
 );
 
 -- parity-case: evidence_cap expected=100
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":5,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":5,"evidenced":true}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":3,"evidenced":true}]'::jsonb
   ),
   100::numeric,
   'paridade: evidence_cap'
@@ -147,8 +147,8 @@ select is(
 -- parity-case: level_above_required expected=100
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":3,"weight":1,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":5,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":2,"weight":1,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":3,"evidenced":false}]'::jsonb
   ),
   100::numeric,
   'paridade: level_above_required'
@@ -167,8 +167,8 @@ select is(
 -- parity-case: zero_weights expected=0
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":3,"weight":0,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":4,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":2,"weight":0,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":3,"evidenced":false}]'::jsonb
   ),
   0::numeric,
   'paridade: zero_weights'
@@ -178,19 +178,19 @@ select is(
 select is(
   pg_temp.parity_score(
     '[]'::jsonb,
-    '[{"skill":"A","level":3,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":2,"evidenced":false}]'::jsonb
   ),
   0::numeric,
   'paridade: job_without_skills'
 );
 
--- parity-case: mixed_evidence_weights expected=79.72
+-- parity-case: mixed_evidence_weights expected=67.78
 select is(
   pg_temp.parity_score(
-    '[{"skill":"A","level":4,"weight":1,"mandatory":true},{"skill":"B","level":3,"weight":0.5,"mandatory":false}]'::jsonb,
-    '[{"skill":"A","level":3,"evidenced":true},{"skill":"B","level":2,"evidenced":false}]'::jsonb
+    '[{"skill":"A","level":3,"weight":1,"mandatory":true},{"skill":"B","level":2,"weight":0.5,"mandatory":false}]'::jsonb,
+    '[{"skill":"A","level":2,"evidenced":true},{"skill":"B","level":1,"evidenced":false}]'::jsonb
   ),
-  79.72::numeric,
+  67.78::numeric,
   'paridade: mixed_evidence_weights'
 );
 
