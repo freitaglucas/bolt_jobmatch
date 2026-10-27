@@ -125,8 +125,10 @@ Regra de operação: configuração, nunca código por cliente.
 16. Não editar: migrations já aplicadas, `.env*`, `supabase/seeds/**`,
     `supabase/scripts/**`, `src/components/ui/**`, `.clinerules`.
 17. Mudança de banco = migration nova com teste pgTAP.
-18. Sem teste automático de tela até o N59: lógica pura em `.ts` com vitest;
-    tela com roteiro de teste manual.
+18. Lógica pura em `.ts` com vitest. Teste de tela usa jsdom e Testing Library,
+    com `// @vitest-environment jsdom` na primeira linha do arquivo (o padrão
+    continua `node`). `src/App.test.tsx` confere os gates por papel: quem
+    mexer em gate ou no `App.tsx` roda e amplia esse teste.
 19. Antes de PR: `npm run lint && npm run typecheck && npm test`.
 20. Conventional Commits, em português.
 
