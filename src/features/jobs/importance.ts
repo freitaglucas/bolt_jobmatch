@@ -1,5 +1,8 @@
-// Importancia de cada competencia da vaga. Ela vira o "peso" (job_skills.weight)
-// usado no Match Score. O padrao e Alta (peso 1), que e o comportamento anterior.
+// Importancia de cada competencia da vaga, que vira job_skills.weight.
+// N35 (28/10): a importancia saiu da tela; o papel na vaga decide o peso. Vaga
+// nova grava peso 1 (Alta). Vagas antigas guardam o peso que tinham ate a
+// formula v2 (N32), que passa a usar o papel (obrigatorio 1,0, implicito 0,5,
+// desejavel ate +15%).
 export const IMPORTANCE_VALUES = ['high', 'medium', 'low'] as const;
 
 export type ImportanceValue = (typeof IMPORTANCE_VALUES)[number];

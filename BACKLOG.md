@@ -25,12 +25,12 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 
 - [x] **6. N30** (Match): Régua de 3 níveis (básico, intermediário, avançado) com descritor por nível — 25 h · Must
 - [x] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must · 27/10: N31a (banco e apply_to_job) e N31b (telas: papel, requisitos, perguntas ao candidatar, aviso de recusa, "não atende" no Pipeline)
-- [ ] **8. N35** (Match): Importância em 3 níveis (substitui 1–5) — parcial · 2 h · Must
+- [x] **8. N35** (Match): Importância em 3 níveis (substitui 1–5) — 2 h · Must · 28/10: a importância saiu da tela; o papel decide o peso
 - [ ] **9. N33** (Match): Grupos de alternativas ("1 de: AWS, GCP, Azure"; "2 de 4") — 25 h · Must
 - [ ] **10. N93** (Match): Catálogo com sinônimos (skill_aliases) e famílias (pai e filhos): sinônimos valem o mesmo item; vaga que pede o pai aceita qualquer filho — 20 h · Must
 - [ ] **11. N41** (Fundação): Catálogo v1: itens atômicos do estudo de 100 vagas (competências, ferramentas, requisitos, traços), com sinônimos e famílias, curados antes do Beta — 40 h · Must
 - [ ] **12. N94** (Match): Fila e curadoria do catálogo: termo novo vai para skill_catalog_queue; job semanal (curate-catalog, em lote) propõe sinônimo, filho ou item novo; o PO aprova (planilha no Beta) — 15 h · Must
-- [ ] **13. N32** (Match): Fórmula v2: obrigatório 1,0 · implícito 0,5 · desejável soma até +15%; item acrescentado pelo candidato vale 0,7; traços fora do score — 25 h · Must
+- [ ] **13. N32** (Match): Fórmula v2: obrigatório 1,0 · implícito 0,5 · desejável soma até +15%; item acrescentado pelo candidato vale 0,7; traços fora do score — 25 h · Must · 28/10: o peso vem só do papel (job_skills.weight antigo deixa de contar)
 - [ ] **14. N34** (Vagas): Composição da vaga: técnicas sem limite; até 3 pontos fortes da lista fechada; aviso acima de ~10 obrigatórias — 5 h · Must
 - [ ] **15. NOVO-3** (Match): Foto do perfil em cada candidatura; recalcular o score só quando muda o catálogo (curadoria) ou a vaga — 8 h · Must
 - [ ] **16. N36** (Match): Faixas de compatibilidade para o candidato (altíssima, alta, compatível, não compatível) pela cobertura do núcleo; score numérico com fatores para o recrutador — 20 h · Must · 27/10: a empresa poderá escolher uma faixa mínima de compatibilidade para a vaga
