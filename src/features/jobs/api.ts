@@ -1,5 +1,5 @@
 import { supabase } from '../../shared/lib/supabase';
-import type { Job } from '../../lib/types';
+import type { Job, JobRequirementView } from '../../lib/types';
 import { toSeniority } from './seniority';
 
 function formatPostedDate(createdAt: string): string {
@@ -48,9 +48,24 @@ export async function getActiveJobs(): Promise<Job[]> {
     throw jobSkillsError;
   }
 
-  const skillIds = [...new Set(jobSkillRows.map((skill) => skill.skill_id))];
+  // Requisitos sim/nao (N31). O candidato nao le se o requisito e excludente.
+  const { data: requirementRows, error: requirementsError } = await supabase
+    .from('job_requirements')
+    .select('id, job_id, skill_id, detail')
+    .in('job_id', jobIds);
+
+  if (requirementsError) {
+    throw requirementsError;
+  }
+
+  const skillIds = [
+    ...new Set([
+      ...jobSkillRows.map((skill) => skill.skill_id),
+      ...requirementRows.map((requirement) => requirement.skill_id),
+    ]),
+  ];
   const { data: skillRows, error: skillsError } = skillIds.length
-    ? await supabase.from('skills').select('id, name').in('id', skillIds)
+    ? await supabase.from('skills').select('id, name, description').in('id', skillIds)
     : { data: [], error: null };
 
   if (skillsError) {
@@ -59,6 +74,24 @@ export async function getActiveJobs(): Promise<Job[]> {
 
   const companiesById = new Map(companyRows.map((company) => [company.id, company.name]));
   const skillsById = new Map(skillRows.map((skill) => [skill.id, skill.name]));
+  const questionsById = new Map(
+    skillRows.map((skill) => [skill.id, skill.description?.trim() || null]),
+  );
+  const requirementsByJobId = new Map<string, JobRequirementView[]>();
+  for (const requirement of requirementRows) {
+    const name = skillsById.get(requirement.skill_id);
+    if (!name) {
+      continue;
+    }
+    const current = requirementsByJobId.get(requirement.job_id) ?? [];
+    current.push({
+      id: requirement.id,
+      name,
+      question: questionsById.get(requirement.skill_id) ?? `A vaga pede: ${name}. Você atende?`,
+      detail: requirement.detail,
+    });
+    requirementsByJobId.set(requirement.job_id, current);
+  }
   const jobSkillsByJobId = new Map<string, typeof jobSkillRows>();
 
   for (const jobSkill of jobSkillRows) {
@@ -92,6 +125,9 @@ export async function getActiveJobs(): Promise<Job[]> {
             }]
           : [];
       }),
+      requirements: (requirementsByJobId.get(job.id) ?? []).sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR'),
+      ),
       posted: formatPostedDate(job.created_at),
       tags: skills.flatMap((jobSkill) => {
         const name = skillsById.get(jobSkill.skill_id);

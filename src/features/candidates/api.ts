@@ -19,6 +19,8 @@ export interface SkillCatalogEntry {
   id: string;
   name: string;
   category: 'hard' | 'soft';
+  // Tipo do item (N31): competency ou tool nesta lista.
+  kind?: string;
 }
 
 async function getAuthenticatedUserId(): Promise<string> {
@@ -74,7 +76,7 @@ export async function getMyMatchSkills(): Promise<CandidateProfileSkill[]> {
 export async function getSkillCatalog(): Promise<SkillCatalogEntry[]> {
   const { data, error } = await supabase
     .from('skills')
-    .select('id, name, category')
+    .select('id, name, category, kind')
     .in('kind', [...SCORED_KINDS])
     .order('name');
 

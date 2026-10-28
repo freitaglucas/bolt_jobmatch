@@ -24,7 +24,7 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 ### B1 · Match v2 e catálogo (~258 h)
 
 - [x] **6. N30** (Match): Régua de 3 níveis (básico, intermediário, avançado) com descritor por nível — 25 h · Must
-- [ ] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must · 27/10: N31a (banco, regras e candidatura por apply_to_job) feito; N31b (telas) a seguir
+- [x] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must · 27/10: N31a (banco e apply_to_job) e N31b (telas: papel, requisitos, perguntas ao candidatar, aviso de recusa, "não atende" no Pipeline)
 - [ ] **8. N35** (Match): Importância em 3 níveis (substitui 1–5) — parcial · 2 h · Must
 - [ ] **9. N33** (Match): Grupos de alternativas ("1 de: AWS, GCP, Azure"; "2 de 4") — 25 h · Must
 - [ ] **10. N93** (Match): Catálogo com sinônimos (skill_aliases) e famílias (pai e filhos): sinônimos valem o mesmo item; vaga que pede o pai aceita qualquer filho — 20 h · Must

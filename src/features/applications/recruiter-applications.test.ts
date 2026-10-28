@@ -116,6 +116,19 @@ describe('mapRecruiterApplication', () => {
     );
     expect(candidate).toMatchObject({ stage: 'Rejeitado', silverMedalist: true });
   });
+
+  it('lists the yes/no requirements the candidate does not meet', () => {
+    const candidate = mapRecruiterApplication(
+      makeRow({
+        application_requirement_answers: [
+          { meets: false, job_requirements: { detail: 'Vila Olímpia', skills: { name: 'Trabalho presencial' } } },
+          { meets: true, job_requirements: { detail: null, skills: { name: 'CNH categoria B' } } },
+        ],
+      }),
+    );
+    expect(candidate?.unmetRequirements).toEqual(['Trabalho presencial (Vila Olímpia)']);
+    expect(mapRecruiterApplication(makeRow())?.unmetRequirements).toEqual([]);
+  });
 });
 
 describe('mapRecruiterApplication: reserva interna (N83)', () => {

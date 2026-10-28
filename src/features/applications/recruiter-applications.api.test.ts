@@ -44,6 +44,9 @@ describe('listRecruiterApplications', () => {
     expect(RECRUITER_APPLICATIONS_SELECT).toContain(
       'feedback_deadlines(due_at, met_at, postpone_no)',
     );
+    expect(RECRUITER_APPLICATIONS_SELECT).toContain(
+      'application_requirement_answers(meets, job_requirements(detail, skills(name)))',
+    );
   });
 
   it('returns an empty list when there is no data', async () => {
