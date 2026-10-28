@@ -6,6 +6,7 @@ import {
   type JobSkillInput,
 } from './create-job.schema';
 import { DEFAULT_IMPORTANCE, weightForImportance } from './importance';
+import { roleFromMandatory, type JobItemRole } from './item-roles';
 
 // Peso padrão de uma competência (importância Alta). O recrutador pode baixar
 // para Média (0,75) ou Baixa (0,5) na criação da vaga (item 2.3a).
@@ -17,6 +18,7 @@ export interface JobSkillRow {
   required_level: number;
   weight: number;
   mandatory: boolean;
+  role: JobItemRole;
 }
 
 export function buildJobSkillRows(
@@ -29,6 +31,7 @@ export function buildJobSkillRows(
     required_level: skill.requiredLevel,
     weight: weightForImportance(skill.importance),
     mandatory: skill.mandatory,
+    role: roleFromMandatory(skill.mandatory),
   }));
 }
 

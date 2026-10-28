@@ -112,8 +112,8 @@ describe('buildJobSkillRows', () => {
         { skillId: SKILL_B, requiredLevel: 2, mandatory: false },
       ]),
     ).toEqual([
-      { job_id: 'job-1', skill_id: SKILL_A, required_level: 3, weight: 1, mandatory: true },
-      { job_id: 'job-1', skill_id: SKILL_B, required_level: 2, weight: 1, mandatory: false },
+      { job_id: 'job-1', skill_id: SKILL_A, required_level: 3, weight: 1, mandatory: true, role: 'required' },
+      { job_id: 'job-1', skill_id: SKILL_B, required_level: 2, weight: 1, mandatory: false, role: 'preferred' },
     ]);
   });
 });
@@ -169,8 +169,8 @@ describe('createJob', () => {
       }),
     );
     expect(skillsChain.insert).toHaveBeenCalledWith([
-      { job_id: 'job-1', skill_id: SKILL_A, required_level: 3, weight: 1, mandatory: true },
-      { job_id: 'job-1', skill_id: SKILL_B, required_level: 2, weight: 1, mandatory: false },
+      { job_id: 'job-1', skill_id: SKILL_A, required_level: 3, weight: 1, mandatory: true, role: 'required' },
+      { job_id: 'job-1', skill_id: SKILL_B, required_level: 2, weight: 1, mandatory: false, role: 'preferred' },
     ]);
     expect(activateChain.update).toHaveBeenCalledWith({ status: 'active' });
     expect(activateChain.eq).toHaveBeenCalledWith('id', 'job-1');

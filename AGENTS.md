@@ -135,11 +135,22 @@ Regra de operação: configuração, nunca código por cliente.
 ## Domínio
 - Régua de nível: sempre 3 níveis, 1 básico, 2 intermediário, 3 avançado (N30),
   com descritor em `src/features/skills/levels.ts`. Não existe nível 4 ou 5.
+- Tipo do item (`skills.kind`, N31): `competency` (inclui prática
+  comportamental observável), `tool`, `requirement` (sim/não) e `trait` (ponto
+  forte, nunca pontua). Só `competency` e `tool` entram em `job_skills` e
+  `candidate_skills`; os catálogos das telas filtram por `SCORED_KINDS`
+  (`src/features/skills/item-kinds.ts`).
+- Papel na vaga (`job_skills.role`, N31): `required`, `preferred` ou `implicit`
+  (`src/features/jobs/item-roles.ts`). `mandatory` é derivado de `role` por
+  gatilho; até o N32 o implícito pontua como desejável.
+- Requisito sim/não (`job_requirements`, N31): filtra antes do score. A empresa
+  marca se é excludente. A candidatura nasce só por `apply_to_job` (nunca
+  insert direto em `applications`), com uma resposta por requisito; "não" num
+  excludente recusa na hora, com retorno de motivo ligado à vaga e sem prazo
+  (fora da meta e do selo).
 - Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
-  e importância em 3 níveis. Fórmula v2 no B1: tipos de item
-  (competência, ferramenta, requisito sim/não, traço fora do score), papel na
-  vaga (obrigatório 1,0, implícito 0,5, desejável até +15%), grupos "1 de",
-  sinônimos e famílias.
+  e importância em 3 níveis. Fórmula v2 no B1 (N32): obrigatório 1,0,
+  implícito 0,5, desejável até +15%, grupos "1 de", sinônimos e famílias.
 - Faixa de compatibilidade (o que o candidato vê): altíssima, alta, compatível,
   não compatível, pela cobertura das obrigatórias (N36).
 - Origem do item: "do currículo" (1,0) ou "acrescentado" (0,7) (N90).

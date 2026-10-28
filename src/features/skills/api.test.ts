@@ -15,25 +15,27 @@ describe('listSkills', () => {
     mocks.from.mockReset();
   });
 
-  it('reads the catalog ordered by name', async () => {
+  it('reads only scored items (competency and tool), ordered by name', async () => {
     const order = vi.fn().mockResolvedValue({
       data: [{ id: '1', name: 'SQL', category: 'hard' }],
       error: null,
     });
-    const select = vi.fn().mockReturnValue({ order });
+    const inKind = vi.fn().mockReturnValue({ order });
+    const select = vi.fn().mockReturnValue({ in: inKind });
     mocks.from.mockReturnValue({ select });
 
     const result = await listSkills();
 
     expect(mocks.from).toHaveBeenCalledWith('skills');
     expect(select).toHaveBeenCalledWith('id, name, category');
+    expect(inKind).toHaveBeenCalledWith('kind', ['competency', 'tool']);
     expect(order).toHaveBeenCalledWith('name', { ascending: true });
     expect(result).toEqual([{ id: '1', name: 'SQL', category: 'hard' }]);
   });
 
   it('throws when the query fails', async () => {
     const order = vi.fn().mockResolvedValue({ data: null, error: { message: 'falhou' } });
-    const select = vi.fn().mockReturnValue({ order });
+    const select = vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order }) });
     mocks.from.mockReturnValue({ select });
 
     await expect(listSkills()).rejects.toMatchObject({ message: 'falhou' });

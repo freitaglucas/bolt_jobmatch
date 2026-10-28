@@ -1,4 +1,5 @@
 import { supabase } from '../../shared/lib/supabase';
+import { SCORED_KINDS } from '../skills/item-kinds';
 import type { CandidateSkill } from '../match/types';
 import { SaveCandidateProfileSchema } from './schemas';
 import type {
@@ -74,6 +75,7 @@ export async function getSkillCatalog(): Promise<SkillCatalogEntry[]> {
   const { data, error } = await supabase
     .from('skills')
     .select('id, name, category')
+    .in('kind', [...SCORED_KINDS])
     .order('name');
 
   if (error) {
