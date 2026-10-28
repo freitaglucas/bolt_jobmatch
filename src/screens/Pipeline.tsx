@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Bookmark, Briefcase, Calendar, Check, Clock, MapPin } from 'lucide-react';
+import { Bookmark, Briefcase, Calendar, Check, Clock, ListX, MapPin } from 'lucide-react';
 import { reserveBadge } from '../features/applications/reserve';
 import { BatchFeedbackDialog } from '../features/applications/components/BatchFeedbackDialog';
 import {
@@ -356,6 +356,17 @@ export function Pipeline() {
                               </span>
                             ) : null;
                           })()}
+
+
+                          {(candidate.unmetRequirements?.length ?? 0) > 0 && (
+                            <span
+                              title={candidate.unmetRequirements?.join('; ')}
+                              className="inline-flex items-center gap-1 mt-2 ml-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-jm-orange/15 text-jm-orange"
+                            >
+                              <ListX className="h-3 w-3" aria-hidden="true" />
+                              Não atende: {candidate.unmetRequirements?.join('; ')}
+                            </span>
+                          )}
 
                           {showJobTitle && candidate.jobTitle && (
                             <div className="flex items-center gap-1.5 mt-3 text-xs text-muted-foreground">

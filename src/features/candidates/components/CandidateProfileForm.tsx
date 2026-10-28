@@ -346,7 +346,7 @@ export function CandidateProfileForm({
                   <SelectContent>
                     {availableSkills.map((skill) => (
                       <SelectItem key={skill.id} value={skill.id}>
-                        {skill.name} ({skill.category === 'hard' ? 'hard' : 'soft'})
+                        {skill.name} ({skill.kind === 'tool' ? 'ferramenta' : skill.category})
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -2,6 +2,7 @@ import type { ApplicationStatus, PipelineCandidate } from '../../lib/types';
 import type { Database } from '../../shared/types/database';
 import { pickOpenDeadline, type FeedbackDeadlineRow } from './stage-deadline';
 import { pickActiveReserve, type ReserveRow } from './reserve';
+import { pickUnmetRequirements, type RequirementAnswerRow } from './requirement-status';
 
 // Linha como vem do banco: candidaturas das vagas do recrutador, com dados do
 // candidato e da vaga embutidos (ver recruiter-applications.api.ts).
@@ -15,6 +16,8 @@ export interface RecruiterApplicationRow {
   feedback_deadlines: FeedbackDeadlineRow[] | null;
   // Reserva interna (N83). So o recrutador le esta tabela.
   application_reserves?: ReserveRow[] | null;
+  // Respostas aos requisitos sim/nao (N31).
+  application_requirement_answers?: RequirementAnswerRow[] | null;
   jobs: { title: string } | null;
   candidate_profiles: {
     current_position: string | null;
@@ -94,6 +97,7 @@ export function mapRecruiterApplication(
     postponeCount: openDeadline?.postpone_no ?? 0,
     reserveUntil: reserve?.validUntil ?? null,
     reserveRenewals: reserve?.renewals ?? 0,
+    unmetRequirements: pickUnmetRequirements(row.application_requirement_answers),
   };
 }
 

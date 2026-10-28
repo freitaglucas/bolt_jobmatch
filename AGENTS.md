@@ -147,7 +147,10 @@ Regra de operação: configuração, nunca código por cliente.
   marca se é excludente. A candidatura nasce só por `apply_to_job` (nunca
   insert direto em `applications`), com uma resposta por requisito; "não" num
   excludente recusa na hora, com retorno de motivo ligado à vaga e sem prazo
-  (fora da meta e do selo).
+  (fora da meta e do selo). Na tela, `handleApply` (App.tsx) abre o
+  `RequirementsDialog` quando a vaga tem requisito e o
+  `ApplicationRejectedDialog` na recusa. O candidato nunca vê se o requisito é
+  excludente.
 - Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
   e importância em 3 níveis. Fórmula v2 no B1 (N32): obrigatório 1,0,
   implícito 0,5, desejável até +15%, grupos "1 de", sinônimos e famílias.

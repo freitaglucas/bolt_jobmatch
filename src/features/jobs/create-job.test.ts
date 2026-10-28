@@ -17,7 +17,7 @@ vi.mock('../recruiters/api', () => ({
   getRecruiterOnboarding: mocks.getRecruiterOnboarding,
 }));
 
-import { buildJobSkillRows, createJob } from './create-job';
+import { buildJobRequirementRows, buildJobSkillRows, createJob } from './create-job';
 import { CreateJobSchema, type CreateJobInput } from './create-job.schema';
 
 type MockFn = ReturnType<typeof vi.fn>;
@@ -52,6 +52,8 @@ function buildChain(result: unknown): MockBuilder {
 
 const SKILL_A = '11111111-1111-4111-8111-111111111111';
 const SKILL_B = '22222222-2222-4222-8222-222222222222';
+const REQ_A = '33333333-3333-4333-8333-333333333333';
+const REQ_B = '44444444-4444-4444-8444-444444444444';
 
 function validInput(overrides: Partial<CreateJobInput> = {}): CreateJobInput {
   return {
@@ -102,6 +104,37 @@ describe('CreateJobSchema', () => {
     const parsed = CreateJobSchema.parse(validInput({ salaryRange: '   ' }));
     expect(parsed.salaryRange).toBeUndefined();
   });
+
+  it('starts with no requirements and trims the detail', () => {
+    expect(CreateJobSchema.parse(validInput()).requirements).toEqual([]);
+    const parsed = CreateJobSchema.parse(
+      validInput({ requirements: [{ skillId: REQ_A, detail: '  ', eliminatory: true }] }),
+    );
+    expect(parsed.requirements).toEqual([{ skillId: REQ_A, detail: undefined, eliminatory: true }]);
+  });
+
+  it('rejects a repeated requirement and more than 8', () => {
+    const repeated = [
+      { skillId: REQ_A, eliminatory: true },
+      { skillId: REQ_A, eliminatory: false },
+    ];
+    expect(CreateJobSchema.safeParse(validInput({ requirements: repeated })).success).toBe(false);
+    const many = Array.from({ length: 9 }, (_, index) => ({
+      skillId: `5555555${index}-5555-4555-8555-555555555555`,
+      eliminatory: false,
+    }));
+    expect(CreateJobSchema.safeParse(validInput({ requirements: many })).success).toBe(false);
+  });
+
+  it('accepts the role of each item', () => {
+    const skills = [{ skillId: SKILL_A, requiredLevel: 2, role: 'implicit' as const }];
+    expect(CreateJobSchema.safeParse(validInput({ skills })).success).toBe(true);
+    const wrong = [{ skillId: SKILL_A, requiredLevel: 2, role: 'essencial' }];
+    expect(
+      CreateJobSchema.safeParse(validInput({ skills: wrong as unknown as CreateJobInput['skills'] }))
+        .success,
+    ).toBe(false);
+  });
 });
 
 describe('buildJobSkillRows', () => {
@@ -114,6 +147,32 @@ describe('buildJobSkillRows', () => {
     ).toEqual([
       { job_id: 'job-1', skill_id: SKILL_A, required_level: 3, weight: 1, mandatory: true, role: 'required' },
       { job_id: 'job-1', skill_id: SKILL_B, required_level: 2, weight: 1, mandatory: false, role: 'preferred' },
+    ]);
+  });
+
+  it('uses the role when given: only required marks mandatory', () => {
+    expect(
+      buildJobSkillRows('job-1', [
+        { skillId: SKILL_A, requiredLevel: 2, role: 'implicit' },
+        { skillId: SKILL_B, requiredLevel: 2, role: 'required' },
+      ]).map(({ role, mandatory }) => ({ role, mandatory })),
+    ).toEqual([
+      { role: 'implicit', mandatory: false },
+      { role: 'required', mandatory: true },
+    ]);
+  });
+});
+
+describe('buildJobRequirementRows', () => {
+  it('maps requirements to job_requirements rows', () => {
+    expect(
+      buildJobRequirementRows('job-1', [
+        { skillId: REQ_A, detail: 'moto não serve', eliminatory: true },
+        { skillId: REQ_B, detail: undefined, eliminatory: false },
+      ]),
+    ).toEqual([
+      { job_id: 'job-1', skill_id: REQ_A, detail: 'moto não serve', eliminatory: true },
+      { job_id: 'job-1', skill_id: REQ_B, detail: null, eliminatory: false },
     ]);
   });
 });
@@ -174,6 +233,60 @@ describe('createJob', () => {
     ]);
     expect(activateChain.update).toHaveBeenCalledWith({ status: 'active' });
     expect(activateChain.eq).toHaveBeenCalledWith('id', 'job-1');
+  });
+
+  it('saves the requirements after the skills', async () => {
+    const insertJobChain = buildChain({ data: { id: 'job-1' }, error: null });
+    const activateChain = buildChain({ error: null });
+    const requirementsChain = buildChain({ error: null });
+    const jobsChains = [insertJobChain, activateChain];
+    const calls: string[] = [];
+    let jobsCall = 0;
+
+    mocks.from.mockImplementation((table: string) => {
+      calls.push(table);
+      if (table === 'jobs') {
+        const chain = jobsChains[jobsCall] ?? buildChain({ error: null });
+        jobsCall += 1;
+        return chain;
+      }
+      if (table === 'job_requirements') {
+        return requirementsChain;
+      }
+      return buildChain({ error: null });
+    });
+
+    await createJob(validInput({ requirements: [{ skillId: REQ_A, eliminatory: true }] }));
+
+    expect(calls).toEqual(['jobs', 'job_skills', 'job_requirements', 'jobs']);
+    expect(requirementsChain.insert).toHaveBeenCalledWith([
+      { job_id: 'job-1', skill_id: REQ_A, detail: null, eliminatory: true },
+    ]);
+  });
+
+  it('deletes the draft and throws when saving requirements fails', async () => {
+    const insertJobChain = buildChain({ data: { id: 'job-1' }, error: null });
+    const deleteChain = buildChain({ error: null });
+    const jobsChains = [insertJobChain, deleteChain];
+    let jobsCall = 0;
+
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'jobs') {
+        const chain = jobsChains[jobsCall] ?? buildChain({ error: null });
+        jobsCall += 1;
+        return chain;
+      }
+      if (table === 'job_requirements') {
+        return buildChain({ error: { message: 'falhou' } });
+      }
+      return buildChain({ error: null });
+    });
+
+    await expect(
+      createJob(validInput({ requirements: [{ skillId: REQ_A, eliminatory: false }] })),
+    ).rejects.toThrow('Não foi possível salvar os requisitos da vaga. Tente novamente.');
+    expect(deleteChain.delete).toHaveBeenCalled();
+    expect(deleteChain.update).not.toHaveBeenCalled();
   });
 
   it('deletes the draft and throws when saving skills fails', async () => {

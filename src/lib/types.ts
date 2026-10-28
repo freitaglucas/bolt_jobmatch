@@ -14,6 +14,14 @@ export interface SkillRequirement {
   weight?: number;
 }
 
+// Requisito sim/nao da vaga como o candidato ve (N31). Se e excludente nao vem.
+export interface JobRequirementView {
+  id: string; // job_requirements.id
+  name: string;
+  question: string;
+  detail: string | null;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -24,6 +32,7 @@ export interface Job {
   description: string;
   matchScore: number;
   skills: SkillRequirement[];
+  requirements?: JobRequirementView[];
   posted: string;
   tags: string[];
   status: 'Rascunho' | 'Ativa' | 'Pausada' | 'Fechada';
@@ -161,5 +170,6 @@ export interface PipelineCandidate {
   postponeCount?: number; // adiamentos ja usados na etapa atual
   reserveUntil?: string | null; // reserva interna ativa (N83): validade
   reserveRenewals?: number; // renovacoes ja usadas na reserva ativa
+  unmetRequirements?: string[]; // requisitos sim/nao respondidos com nao (N31)
 }
 

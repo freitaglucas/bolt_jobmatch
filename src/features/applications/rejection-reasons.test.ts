@@ -75,6 +75,13 @@ describe('suggestReason', () => {
     expect(suggestReason(base)).toBe('better_fit');
     expect(suggestReason(EMPTY_INSIGHTS)).toBe('better_fit');
   });
+
+  it('suggests the eliminatory reason first when a yes/no requirement is unmet', () => {
+    expect(
+      suggestReason({ ...base, missing: ['SQL'], unmetRequirements: ['Trabalho presencial'] }),
+    ).toBe('eliminatory');
+    expect(suggestReason({ ...base, unmetRequirements: [] })).toBe('better_fit');
+  });
 });
 
 describe('resolveReasons and groupByReason', () => {
@@ -165,6 +172,18 @@ describe('buildRejectionBody', () => {
   it('keeps the eliminatory reason generic', () => {
     const body = buildRejectionBody({ ...input, reason: 'eliminatory' });
     expect(body).toContain('localização, disponibilidade ou idioma');
+  });
+
+  it('cites the unmet requirement of the job when there is one', () => {
+    const body = buildRejectionBody({
+      ...input,
+      insights: { ...insights, unmetRequirements: ['Trabalho presencial (Vila Olímpia)'] },
+      reason: 'eliminatory',
+    });
+    expect(body).toContain(
+      'A vaga pede Trabalho presencial (Vila Olímpia) e, pela sua resposta na candidatura, esse requisito não foi atendido neste momento.',
+    );
+    expect(body).not.toContain('localização, disponibilidade ou idioma');
   });
 
   it('acknowledges the profile and invites to the next jobs on a better fit', () => {

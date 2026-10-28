@@ -2,11 +2,12 @@ import { supabase } from '../../shared/lib/supabase';
 import { getRecruiterOnboarding } from '../recruiters/api';
 import {
   CreateJobSchema,
+  type CreateJobData,
   type CreateJobInput,
   type JobSkillInput,
 } from './create-job.schema';
 import { DEFAULT_IMPORTANCE, weightForImportance } from './importance';
-import { roleFromMandatory, type JobItemRole } from './item-roles';
+import { isMandatoryRole, roleFromMandatory, type JobItemRole } from './item-roles';
 
 // Peso padrão de uma competência (importância Alta). O recrutador pode baixar
 // para Média (0,75) ou Baixa (0,5) na criação da vaga (item 2.3a).
@@ -25,13 +26,35 @@ export function buildJobSkillRows(
   jobId: string,
   skills: JobSkillInput[],
 ): JobSkillRow[] {
-  return skills.map((skill) => ({
+  return skills.map((skill) => {
+    const role = skill.role ?? roleFromMandatory(skill.mandatory ?? false);
+    return {
+      job_id: jobId,
+      skill_id: skill.skillId,
+      required_level: skill.requiredLevel,
+      weight: weightForImportance(skill.importance),
+      mandatory: isMandatoryRole(role),
+      role,
+    };
+  });
+}
+
+export interface JobRequirementRow {
+  job_id: string;
+  skill_id: string;
+  detail: string | null;
+  eliminatory: boolean;
+}
+
+export function buildJobRequirementRows(
+  jobId: string,
+  requirements: CreateJobData['requirements'],
+): JobRequirementRow[] {
+  return requirements.map((requirement) => ({
     job_id: jobId,
-    skill_id: skill.skillId,
-    required_level: skill.requiredLevel,
-    weight: weightForImportance(skill.importance),
-    mandatory: skill.mandatory,
-    role: roleFromMandatory(skill.mandatory),
+    skill_id: requirement.skillId,
+    detail: requirement.detail ?? null,
+    eliminatory: requirement.eliminatory,
   }));
 }
 
@@ -82,6 +105,17 @@ export async function createJob(input: CreateJobInput): Promise<{ id: string }> 
   if (skillsError) {
     await supabase.from('jobs').delete().eq('id', jobId);
     throw new Error('Não foi possível salvar as competências da vaga. Tente novamente.');
+  }
+
+  if (data.requirements.length > 0) {
+    const { error: requirementsError } = await supabase
+      .from('job_requirements')
+      .insert(buildJobRequirementRows(jobId, data.requirements));
+
+    if (requirementsError) {
+      await supabase.from('jobs').delete().eq('id', jobId);
+      throw new Error('Não foi possível salvar os requisitos da vaga. Tente novamente.');
+    }
   }
 
   const { error: activateError } = await supabase

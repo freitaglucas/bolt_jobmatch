@@ -1,6 +1,7 @@
 import { supabase } from '../../shared/lib/supabase';
 import { buildInsightsByApplication, type InsightsSourceRows } from './match-insights';
 import type { MatchInsights } from './rejection-reasons';
+import { withUnmetRequirements, type ApplicationRequirementAnswerRow } from './requirement-status';
 
 // Quantos ids vao em cada consulta (a lista vai na URL).
 const IN_CHUNK = 50;
@@ -62,5 +63,22 @@ export async function loadMatchInsights(
     (ids) => supabase.from('skills').select('id, name').in('id', ids),
   );
 
-  return buildInsightsByApplication({ applications, jobSkills, candidateSkills, skills });
+  // Requisitos sim/nao respondidos com nao (N31): sugerem o motivo eliminatorio.
+  const unmetAnswers = await inChunks<ApplicationRequirementAnswerRow>(
+    unique(applications.map((application) => application.id)),
+    (ids) =>
+      supabase
+        .from('application_requirement_answers')
+        .select('application_id, meets, job_requirements(detail, skills(name))')
+        .eq('meets', false)
+        .in('application_id', ids) as unknown as PromiseLike<{
+        data: ApplicationRequirementAnswerRow[] | null;
+        error: Error | null;
+      }>,
+  );
+
+  return withUnmetRequirements(
+    buildInsightsByApplication({ applications, jobSkills, candidateSkills, skills }),
+    unmetAnswers,
+  );
 }

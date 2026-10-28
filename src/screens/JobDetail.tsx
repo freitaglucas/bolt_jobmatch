@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   XCircle,
   Heart,
+  ListChecks,
   Share2,
 } from 'lucide-react';
 import type { Job, SkillRequirement } from '@/lib/types';
@@ -171,6 +172,33 @@ export function JobDetail({ job, onBack, onApply, alreadyApplied }: JobDetailPro
             <p className="text-sm text-muted-foreground leading-relaxed">{job.description}</p>
           </CardContent>
         </Card>
+
+        {/* Requisitos sim/nao (N31) */}
+        {(job.requirements?.length ?? 0) > 0 && (
+          <Card className="border-border mb-6">
+            <CardHeader>
+              <CardTitle>Requisitos da vaga</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Ao se candidatar, você responde sim ou não para cada um.
+              </p>
+              <ul className="space-y-2">
+                {job.requirements?.map((requirement) => (
+                  <li key={requirement.id} className="flex items-start gap-3 rounded-xl bg-muted/30 px-4 py-3">
+                    <ListChecks className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{requirement.name}</p>
+                      {requirement.detail && (
+                        <p className="text-xs text-muted-foreground">{requirement.detail}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Match analysis */}
         <Card className="border-border mb-6">

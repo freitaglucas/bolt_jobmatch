@@ -64,6 +64,8 @@ export interface MatchInsights {
   below: BelowLevelItem[];
   // Competencias informadas no nivel pedido ou acima.
   strengths: string[];
+  // Requisitos sim/nao respondidos com nao (N31), com o detalhe da vaga.
+  unmetRequirements?: string[];
 }
 
 export const EMPTY_INSIGHTS: MatchInsights = { missing: [], below: [], strengths: [] };
@@ -131,9 +133,13 @@ export function buildMatchInsights(
   };
 }
 
-// Regra fixa de sugestao. "Requisito sim/nao" (eliminatory) e "vaga encerrada"
-// (job_closed) nao saem dos dados do match: a recrutadora escolhe.
+// Regra fixa de sugestao. "Requisito sim/nao" (eliminatory) e sugerido quando o
+// candidato respondeu que nao atende um requisito da vaga (N31); "vaga
+// encerrada" (job_closed) a recrutadora escolhe.
 export function suggestReason(insights: MatchInsights): ReasonCode {
+  if ((insights.unmetRequirements?.length ?? 0) > 0) {
+    return 'eliminatory';
+  }
   if (insights.missing.length > 0) {
     return 'missing_required';
   }
@@ -243,14 +249,18 @@ export function buildRejectionBody(input: RejectionBodyInput): string {
       );
       break;
     }
-    case 'eliminatory':
+    case 'eliminatory': {
+      const items = (insights.unmetRequirements ?? []).slice(0, 3);
       parts.push(
         `Agradecemos a sua candidatura à vaga ${job}. Desta vez você não seguirá no processo.`,
       );
       parts.push(
-        'Esta vaga tem um requisito que define quem pode seguir, como localização, disponibilidade ou idioma, e, com base no que você informou no perfil, ele não foi atendido neste momento.',
+        items.length > 0
+          ? `A vaga pede ${joinList(items)} e, pela sua resposta na candidatura, ${items.length === 1 ? 'esse requisito não foi atendido' : 'esses requisitos não foram atendidos'} neste momento.`
+          : 'Esta vaga tem um requisito que define quem pode seguir, como localização, disponibilidade ou idioma, e, com base no que você informou no perfil, ele não foi atendido neste momento.',
       );
       break;
+    }
     case 'better_fit':
       parts.push(
         `Agradecemos a sua candidatura à vaga ${job}. O seu perfil é bom, mas, neste momento, seguimos com outro perfil mais completo para o que a vaga pede.`,

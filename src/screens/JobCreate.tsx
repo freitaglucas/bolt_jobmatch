@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Award,
   Check,
+  ListChecks,
   Plus,
   Trash2,
   Briefcase,
@@ -26,7 +27,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EMPLOYMENT_TYPES } from '@/features/jobs/create-job.schema';
+import { EMPLOYMENT_TYPES, MAX_JOB_REQUIREMENTS } from '@/features/jobs/create-job.schema';
 import { useCreateJob } from '@/features/jobs/create-job.hooks';
 import {
   DEFAULT_IMPORTANCE,
@@ -39,9 +40,22 @@ import {
   SENIORITY_VALUES,
   type SeniorityValue,
 } from '@/features/jobs/seniority';
+import {
+  DEFAULT_JOB_ITEM_ROLE,
+  JOB_ITEM_ROLES,
+  JOB_ITEM_ROLE_HINTS,
+  JOB_ITEM_ROLE_LABELS,
+  type JobItemRole,
+} from '@/features/jobs/item-roles';
 import { useRecruiterOnboarding } from '@/features/recruiters/hooks';
-import { useSkillsCatalog } from '@/features/skills/hooks';
-import { filterSkills } from '@/features/skills/search';
+import { useRequirementOptions, useSkillsCatalog } from '@/features/skills/hooks';
+import type { RequirementOption } from '@/features/skills/api';
+import {
+  SKILL_GROUP_LABELS,
+  filterSkills,
+  skillGroup,
+  type SkillGroup,
+} from '@/features/skills/search';
 import {
   DEFAULT_SKILL_LEVEL,
   MAX_SKILL_LEVEL,
@@ -59,9 +73,18 @@ interface SelectedSkill {
   skillId: string;
   name: string;
   category: string;
+  kind?: string;
   requiredLevel: number;
-  mandatory: boolean;
+  role: JobItemRole;
   importance: ImportanceValue;
+}
+
+interface SelectedRequirement {
+  skillId: string;
+  name: string;
+  question: string;
+  detail: string;
+  eliminatory: boolean;
 }
 
 const MAX_SKILLS = 15;
@@ -73,8 +96,13 @@ const steps = [
   { id: 2, label: 'Revisão', icon: Eye },
 ];
 
-function categoryLabel(category: string): string {
-  return category === 'hard' ? 'Técnica' : 'Comportamental';
+function groupLabel(skill: { category: string; kind?: string }): string {
+  return SKILL_GROUP_LABELS[skillGroup({ id: '', name: '', ...skill })];
+}
+
+function roleBadgeVariant(role: JobItemRole): 'destructive' | 'secondary' | 'outline' {
+  if (role === 'required') return 'destructive';
+  return role === 'implicit' ? 'outline' : 'secondary';
 }
 
 function getErrorMessage(error: unknown): string {
@@ -102,13 +130,15 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   // Step 1 fields
   const [selected, setSelected] = useState<SelectedSkill[]>([]);
   const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'hard' | 'soft' | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<SkillGroup | null>(null);
   const [showAllSkills, setShowAllSkills] = useState(false);
+  const [requirements, setRequirements] = useState<SelectedRequirement[]>([]);
 
   const onboarding = useRecruiterOnboarding();
   const companyName = onboarding.data?.companyName ?? null;
 
   const catalog = useSkillsCatalog();
+  const requirementOptions = useRequirementOptions();
   const createJobMutation = useCreateJob();
 
   const suggestions = useMemo(
@@ -123,7 +153,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
     [catalog.data, search, selected, showAllSkills, categoryFilter],
   );
 
-  const addSkill = (skill: { id: string; name: string; category: string }) => {
+  const addSkill = (skill: { id: string; name: string; category: string; kind?: string }) => {
     if (selected.length >= MAX_SKILLS) return;
     if (selected.some((item) => item.skillId === skill.id)) return;
     setSelected((previous) => [
@@ -132,8 +162,9 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         skillId: skill.id,
         name: skill.name,
         category: skill.category,
+        kind: skill.kind,
         requiredLevel: DEFAULT_SKILL_LEVEL,
-        mandatory: false,
+        role: DEFAULT_JOB_ITEM_ROLE,
         importance: DEFAULT_IMPORTANCE,
       },
     ]);
@@ -141,7 +172,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
 
   const updateSkill = (
     skillId: string,
-    changes: Partial<Pick<SelectedSkill, 'requiredLevel' | 'mandatory' | 'importance'>>,
+    changes: Partial<Pick<SelectedSkill, 'requiredLevel' | 'role' | 'importance'>>,
   ) => {
     setSelected((previous) =>
       previous.map((item) => (item.skillId === skillId ? { ...item, ...changes } : item)),
@@ -151,6 +182,32 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   const removeSkill = (skillId: string) => {
     setSelected((previous) => previous.filter((item) => item.skillId !== skillId));
   };
+
+  const addRequirement = (option: RequirementOption) => {
+    if (requirements.length >= MAX_JOB_REQUIREMENTS) return;
+    if (requirements.some((item) => item.skillId === option.id)) return;
+    setRequirements((previous) => [
+      ...previous,
+      { skillId: option.id, name: option.name, question: option.question, detail: '', eliminatory: false },
+    ]);
+  };
+
+  const updateRequirement = (
+    skillId: string,
+    changes: Partial<Pick<SelectedRequirement, 'detail' | 'eliminatory'>>,
+  ) => {
+    setRequirements((previous) =>
+      previous.map((item) => (item.skillId === skillId ? { ...item, ...changes } : item)),
+    );
+  };
+
+  const removeRequirement = (skillId: string) => {
+    setRequirements((previous) => previous.filter((item) => item.skillId !== skillId));
+  };
+
+  const availableRequirements = (requirementOptions.data ?? []).filter(
+    (option) => !requirements.some((item) => item.skillId === option.id),
+  );
 
   const canProceed = () => {
     if (step === 0) {
@@ -173,11 +230,16 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         salaryRange: salary,
         employmentType,
         seniority: seniority ?? undefined,
-        skills: selected.map(({ skillId, requiredLevel, mandatory, importance }) => ({
+        skills: selected.map(({ skillId, requiredLevel, role, importance }) => ({
           skillId,
           requiredLevel,
-          mandatory,
+          role,
           importance,
+        })),
+        requirements: requirements.map(({ skillId, detail, eliminatory }) => ({
+          skillId,
+          detail,
+          eliminatory,
         })),
       });
       onPublished(title.trim());
@@ -381,12 +443,13 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Escolha as competências do catálogo, defina o nível exigido (1-5), a importância
-                    e se são obrigatórias. Elas alimentam o Match Score dos candidatos. Máximo de {MAX_SKILLS}.
+                    Escolha competências e ferramentas do catálogo, defina o nível exigido, a importância
+                    e o papel de cada uma na vaga. Elas alimentam o Match Score dos candidatos. Máximo de {MAX_SKILLS}.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Importância define o peso da competência na média do score (Alta 1,0 · Média 0,75 ·
-                    Baixa 0,5). Obrigatória corta o score pela metade se o candidato não tiver a competência.
+                    Importância define o peso do item na média do score (Alta 1,0 · Média 0,75 ·
+                    Baixa 0,5). Obrigatório corta o score pela metade se o candidato não tiver o item;
+                    desejável e implícito contam a favor.
                   </p>
 
                   {/* Catalog search */}
@@ -428,6 +491,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             { value: null, label: 'Todas' },
                             { value: 'hard', label: 'Técnicas' },
                             { value: 'soft', label: 'Comportamentais' },
+                            { value: 'tool', label: 'Ferramentas' },
                           ] as const).map((option) => (
                             <button
                               key={option.label}
@@ -462,7 +526,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                               <Plus className="h-3 w-3" />
                               {skill.name}
                               <span className="text-[10px] opacity-70">
-                                · {categoryLabel(skill.category)}
+                                · {groupLabel(skill)}
                               </span>
                             </button>
                           ))}
@@ -522,7 +586,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{skill.name}</span>
                               <Badge variant="secondary" className="text-[10px]">
-                                {categoryLabel(skill.category)}
+                                {groupLabel(skill)}
                               </Badge>
                               <button
                                 type="button"
@@ -586,15 +650,32 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             </div>
                           </div>
 
-                          {/* Mandatory toggle */}
-                          <div className="flex items-center gap-2">
-                            <Switch
-                              checked={skill.mandatory}
-                              onCheckedChange={(v) => updateSkill(skill.skillId, { mandatory: v })}
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {skill.mandatory ? 'Obrigatória' : 'Desejável'}
-                            </span>
+                          {/* Role selector */}
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-muted-foreground shrink-0">Papel na vaga:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {JOB_ITEM_ROLES.map((role) => (
+                                  <button
+                                    key={role}
+                                    type="button"
+                                    aria-pressed={skill.role === role}
+                                    onClick={() => updateSkill(skill.skillId, { role })}
+                                    className={cn(
+                                      'h-7 px-2.5 rounded-lg text-xs font-medium transition-all',
+                                      skill.role === role
+                                        ? 'bg-gradient-purple-teal text-white'
+                                        : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                                    )}
+                                  >
+                                    {JOB_ITEM_ROLE_LABELS[role]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {JOB_ITEM_ROLE_HINTS[skill.role]}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -609,13 +690,125 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                   <CardContent className="p-4 flex items-center gap-3">
                     <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <p className="text-sm text-muted-foreground">
-                      {selected.filter((s) => s.mandatory).length} obrigatória(s) e{' '}
-                      {selected.filter((s) => !s.mandatory).length} desejável(eis). O Match Score será calculado
-                      com base nestas competências para cada candidato.
+                      {selected.filter((s) => s.role === 'required').length} obrigatório(s),{' '}
+                      {selected.filter((s) => s.role === 'preferred').length} desejável(eis) e{' '}
+                      {selected.filter((s) => s.role === 'implicit').length} implícito(s). O Match Score será
+                      calculado com base nestes itens para cada candidato.
                     </p>
                   </CardContent>
                 </Card>
               )}
+
+              {/* Requirements (sim/nao) */}
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <ListChecks className="h-5 w-5 text-primary" />
+                    Requisitos sim/não
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Perguntas que o candidato responde ao se candidatar, fora do Match Score. Opcional.
+                    Máximo de {MAX_JOB_REQUIREMENTS}.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Excludente: quem responder não tem a candidatura recusada na hora e recebe o
+                    retorno com o motivo. Sem marcar, a resposta só aparece para você no Pipeline.
+                  </p>
+
+                  {requirementOptions.isLoading && (
+                    <p className="text-sm text-muted-foreground">Carregando requisitos...</p>
+                  )}
+                  {requirementOptions.isError && (
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm text-destructive">Não foi possível carregar os requisitos.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={() => {
+                          void requirementOptions.refetch();
+                        }}
+                      >
+                        Tentar de novo
+                      </Button>
+                    </div>
+                  )}
+                  {availableRequirements.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {availableRequirements.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          disabled={requirements.length >= MAX_JOB_REQUIREMENTS}
+                          onClick={() => addRequirement(option)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:border-primary/30 hover:text-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Plus className="h-3 w-3" />
+                          {option.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {requirements.length > 0 && (
+                    <div className="space-y-3 pt-2">
+                      <Separator />
+                      {requirements.map((requirement) => (
+                        <div
+                          key={requirement.skillId}
+                          className="space-y-3 p-3 rounded-xl border border-border"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm">{requirement.name}</p>
+                              <p className="text-xs text-muted-foreground">{requirement.question}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeRequirement(requirement.skillId)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              aria-label={`Remover ${requirement.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor={`requirement-detail-${requirement.skillId}`} className="text-xs">
+                              Detalhe (opcional)
+                            </Label>
+                            <Input
+                              id={`requirement-detail-${requirement.skillId}`}
+                              maxLength={200}
+                              placeholder="Ex.: presencial na Vila Olímpia, São Paulo"
+                              value={requirement.detail}
+                              onChange={(e) =>
+                                updateRequirement(requirement.skillId, { detail: e.target.value })
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id={`requirement-eliminatory-${requirement.skillId}`}
+                              checked={requirement.eliminatory}
+                              onCheckedChange={(value) =>
+                                updateRequirement(requirement.skillId, { eliminatory: value })
+                              }
+                            />
+                            <Label
+                              htmlFor={`requirement-eliminatory-${requirement.skillId}`}
+                              className="text-xs text-muted-foreground"
+                            >
+                              {requirement.eliminatory ? 'Excludente' : 'Não excludente'}
+                            </Label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -693,16 +886,45 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                               />
                             ))}
                           </div>
-                          <Badge
-                            variant={skill.mandatory ? 'destructive' : 'secondary'}
-                            className="text-[10px]"
-                          >
-                            {skill.mandatory ? 'Obrigatória' : 'Desejável'}
+                          <Badge variant={roleBadgeVariant(skill.role)} className="text-[10px]">
+                            {JOB_ITEM_ROLE_LABELS[skill.role]}
                           </Badge>
                         </div>
                       ))}
                     </div>
                   </div>
+
+                  {requirements.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-sm font-semibold mb-3">
+                          Requisitos sim/não ({requirements.length})
+                        </h3>
+                        <div className="space-y-2">
+                          {requirements.map((requirement) => (
+                            <div
+                              key={requirement.skillId}
+                              className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                            >
+                              <ListChecks className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm flex-1">
+                                {requirement.name}
+                                {requirement.detail.trim() && (
+                                  <span className="text-muted-foreground"> · {requirement.detail.trim()}</span>
+                                )}
+                              </span>
+                              {requirement.eliminatory && (
+                                <Badge variant="destructive" className="text-[10px]">
+                                  Excludente
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 

@@ -22,7 +22,10 @@ import { useAuth } from '@/features/auth/hooks';
 import { TcleConsentGate } from '@/features/consents/components/TcleConsentGate';
 import { CandidateOnboardingGate } from '@/features/candidates/components/CandidateOnboardingGate';
 import { RecruiterOnboardingGate } from '@/features/recruiters/components/RecruiterOnboardingGate';
-import { createApplication } from '@/features/applications/api';
+import { createApplication, type RequirementAnswer } from '@/features/applications/api';
+import { RequirementsDialog } from '@/features/applications/components/RequirementsDialog';
+import { ApplicationRejectedDialog } from '@/features/applications/components/ApplicationRejectedDialog';
+import { rejectionNotice, type RejectionNotice } from '@/features/applications/requirement-answers';
 import { APP_NAME, screenTitle } from '@/lib/screen-title';
 import { trackApplicationSubmitted, trackJobViewed } from '@/features/telemetry/api';
 import {
@@ -45,6 +48,13 @@ function App() {
   const [darkMode, setDarkMode] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  // Requisitos sim/nao (N31): perguntas antes de enviar e aviso de recusa na hora.
+  const [pendingApply, setPendingApply] = useState<{
+    job: Job;
+    resolve: (applied: boolean) => void;
+  } | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+  const [rejection, setRejection] = useState<RejectionNotice | null>(null);
 
   const { toast } = useToast();
   const auth = useAuth();
@@ -131,9 +141,12 @@ function App() {
     }
   };
 
-  const handleApply = async (job: Job): Promise<boolean> => {
+  const submitApplication = async (
+    job: Job,
+    answers: RequirementAnswer[],
+  ): Promise<boolean> => {
     try {
-      const result = await createApplication(job.id);
+      const result = await createApplication(job.id, answers);
       setAppliedJobIds((previous) => new Set(previous).add(job.id));
       const fromJobLink = linkedJobId === job.id;
       if (fromJobLink) {
@@ -147,10 +160,14 @@ function App() {
           undefined,
           fromJobLink ? 'job_link' : 'direct',
         ).catch(() => undefined);
-        toast({
-          title: 'Candidatura enviada!',
-          description: `Você se candidatou para ${job.title} na ${job.company}.`,
-        });
+        if (result.autoRejected) {
+          setRejection(rejectionNotice(job.title, result.unmetRequirements));
+        } else {
+          toast({
+            title: 'Candidatura enviada!',
+            description: `Você se candidatou para ${job.title} na ${job.company}.`,
+          });
+        }
       } else {
         toast({
           title: 'Você já se candidatou',
@@ -168,6 +185,35 @@ function App() {
       });
       return false;
     }
+  };
+
+  // Vaga com requisito sim/nao abre as perguntas antes de enviar.
+  const handleApply = (job: Job): Promise<boolean> => {
+    const requirements = job.requirements ?? [];
+    if (requirements.length === 0) {
+      return submitApplication(job, []);
+    }
+    return new Promise<boolean>((resolve) => {
+      setPendingApply({ job, resolve });
+    });
+  };
+
+  const cancelPendingApply = () => {
+    pendingApply?.resolve(false);
+    setPendingApply(null);
+  };
+
+  const confirmPendingApply = (answers: RequirementAnswer[]) => {
+    const current = pendingApply;
+    if (!current) {
+      return;
+    }
+    setIsApplying(true);
+    void submitApplication(current.job, answers).then((applied) => {
+      setIsApplying(false);
+      setPendingApply(null);
+      current.resolve(applied);
+    });
   };
 
   const handleDetail = (job: Job) => {
@@ -309,6 +355,25 @@ function App() {
           </RecruiterOnboardingGate>
         )}
       </TcleConsentGate>
+      {pendingApply && (
+        <RequirementsDialog
+          jobTitle={pendingApply.job.title}
+          requirements={pendingApply.job.requirements ?? []}
+          isSubmitting={isApplying}
+          onCancel={cancelPendingApply}
+          onSubmit={confirmPendingApply}
+        />
+      )}
+      {rejection && (
+        <ApplicationRejectedDialog
+          notice={rejection}
+          onClose={() => setRejection(null)}
+          onSeeApplications={() => {
+            setRejection(null);
+            setScreen('applications');
+          }}
+        />
+      )}
       <Toaster />
     </div>
   );
