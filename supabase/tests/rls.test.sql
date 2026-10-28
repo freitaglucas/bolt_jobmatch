@@ -14,7 +14,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(56);
+select plan(57);
 
 -- ---------------------------------------------------------------------
 -- Fixtures: candidates, recruiters (2 approved, 1 not approved)
@@ -107,36 +107,36 @@ select throws_ok(
 reset role;
 
 -- ---------------------------------------------------------------------
--- I) Candidato so se candidata a vaga ativa
+-- I) Candidato so se candidata a vaga ativa, e so por apply_to_job (N31)
 -- ---------------------------------------------------------------------
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "a0000000-0000-0000-0000-000000000001"}';
 
-with ins as (
-  insert into public.applications (job_id, candidate_id)
-  values ('f1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001')
-  returning id
-) insert into test_refs (key, id) select 'app_a', id from ins;
+insert into test_refs (key, id)
+select 'app_a', (public.apply_to_job('f1000000-0000-0000-0000-000000000001') ->> 'id')::uuid;
 
 select ok(true, 'deve permitir: candidato A se candidata a vaga ativa');
 
 select throws_ok(
-  $$insert into public.applications (job_id, candidate_id)
-    values ('f1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001')$$,
-  '42501', NULL,
+  $$select public.apply_to_job('f1000000-0000-0000-0000-000000000002')$$,
+  'P0001', 'job_not_active',
   'deve bloquear: candidato A nao se candidata a vaga em rascunho (inativa)'
+);
+
+select throws_ok(
+  $$insert into public.applications (job_id, candidate_id)
+    values ('f1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001')$$,
+  '42501', NULL,
+  'deve bloquear: candidatura direta na tabela, fora de apply_to_job'
 );
 
 reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "b0000000-0000-0000-0000-000000000002"}';
 
-with ins as (
-  insert into public.applications (job_id, candidate_id)
-  values ('f2000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000002')
-  returning id
-) insert into test_refs (key, id) select 'app_b', id from ins;
+insert into test_refs (key, id)
+select 'app_b', (public.apply_to_job('f2000000-0000-0000-0000-000000000003') ->> 'id')::uuid;
 
 reset role;
 

@@ -24,7 +24,7 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 ### B1 · Match v2 e catálogo (~258 h)
 
 - [x] **6. N30** (Match): Régua de 3 níveis (básico, intermediário, avançado) com descritor por nível — 25 h · Must
-- [ ] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must
+- [ ] **7. N31** (Match): Tipos de item: competência (inclui prática comportamental com evidência), ferramenta, requisito sim/não e traço comportamental (fora do score); papel na vaga: obrigatório, desejável ou implícito — 30 h · Must · 27/10: N31a (banco, regras e candidatura por apply_to_job) feito; N31b (telas) a seguir
 - [ ] **8. N35** (Match): Importância em 3 níveis (substitui 1–5) — parcial · 2 h · Must
 - [ ] **9. N33** (Match): Grupos de alternativas ("1 de: AWS, GCP, Azure"; "2 de 4") — 25 h · Must
 - [ ] **10. N93** (Match): Catálogo com sinônimos (skill_aliases) e famílias (pai e filhos): sinônimos valem o mesmo item; vaga que pede o pai aceita qualquer filho — 20 h · Must
@@ -33,7 +33,7 @@ Fase atual. Saída: premissas M1, M3 (candidatura em até 3 minutos), N2 e G2 me
 - [ ] **13. N32** (Match): Fórmula v2: obrigatório 1,0 · implícito 0,5 · desejável soma até +15%; item acrescentado pelo candidato vale 0,7; traços fora do score — 25 h · Must
 - [ ] **14. N34** (Vagas): Composição da vaga: técnicas sem limite; até 3 pontos fortes da lista fechada; aviso acima de ~10 obrigatórias — 5 h · Must
 - [ ] **15. NOVO-3** (Match): Foto do perfil em cada candidatura; recalcular o score só quando muda o catálogo (curadoria) ou a vaga — 8 h · Must
-- [ ] **16. N36** (Match): Faixas de compatibilidade para o candidato (altíssima, alta, compatível, não compatível) pela cobertura do núcleo; score numérico com fatores para o recrutador — 20 h · Must
+- [ ] **16. N36** (Match): Faixas de compatibilidade para o candidato (altíssima, alta, compatível, não compatível) pela cobertura do núcleo; score numérico com fatores para o recrutador — 20 h · Must · 27/10: a empresa poderá escolher uma faixa mínima de compatibilidade para a vaga
 - [ ] **17. N39** (Match): Senioridade como rótulo da empresa, fora do score — parcial · 1 h · Should
 - [ ] **18. N95** (Candidato): Currículo por experiência: candidate_experiences, itens por experiência com trecho de evidência, formação e idiomas; tempo por competência pela união de períodos — 30 h · Must · subiu do B2 em 26/10: as experiências nascem antes da regra de nível do N90
 - [ ] **19. N90** (Match): Origem de cada item em duas classes (veio do currículo × acrescentado pelo candidato) e nível sugerido por regra de tempo e recência — 12 h · Should

@@ -23,7 +23,32 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "application_stages": {
+            "application_requirement_answers": {
+                  Row: {
+                    "application_id": string,"created_at": string,"meets": boolean,"requirement_id": string
+                  }
+                  Insert: {
+                    "application_id": string,"created_at"?: string,"meets": boolean,"requirement_id": string
+                  }
+                  Update: {
+                    "application_id"?: string,"created_at"?: string,"meets"?: boolean,"requirement_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "application_requirement_answers_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_requirement_answers_requirement_id_fkey"
+      columns: ["requirement_id"]
+isOneToOne: false
+      referencedRelation: "job_requirements"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"application_stages": {
                   Row: {
                     "application_id": string,"changed_by": string | null,"created_at": string,"id": string,"justification": string | null,"new_stage": Database["public"]['Enums']["application_status"],"previous_stage": Database["public"]['Enums']["application_status"] | null
                   }
@@ -284,13 +309,13 @@ isOneToOne: false
                   ]
                 },"job_skills": {
                   Row: {
-                    "created_at": string,"id": string,"job_id": string,"mandatory": boolean,"required_level": number,"skill_id": string,"weight": number
+                    "created_at": string,"id": string,"job_id": string,"mandatory": boolean,"required_level": number,"role": string,"skill_id": string,"weight": number
                   }
                   Insert: {
-                    "created_at"?: string,"id"?: string,"job_id": string,"mandatory"?: boolean,"required_level": number,"skill_id": string,"weight": number
+                    "created_at"?: string,"id"?: string,"job_id": string,"mandatory"?: boolean,"required_level": number,"role"?: string,"skill_id": string,"weight": number
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"job_id"?: string,"mandatory"?: boolean,"required_level"?: number,"skill_id"?: string,"weight"?: number
+                    "created_at"?: string,"id"?: string,"job_id"?: string,"mandatory"?: boolean,"required_level"?: number,"role"?: string,"skill_id"?: string,"weight"?: number
                   }
                   Relationships: [
                     {
@@ -301,6 +326,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "job_skills_skill_id_fkey"
+      columns: ["skill_id"]
+isOneToOne: false
+      referencedRelation: "skills"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"job_requirements": {
+                  Row: {
+                    "created_at": string,"detail": string | null,"eliminatory": boolean,"id": string,"job_id": string,"skill_id": string
+                  }
+                  Insert: {
+                    "created_at"?: string,"detail"?: string | null,"eliminatory"?: boolean,"id"?: string,"job_id": string,"skill_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"detail"?: string | null,"eliminatory"?: boolean,"id"?: string,"job_id"?: string,"skill_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "job_requirements_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_requirements_skill_id_fkey"
       columns: ["skill_id"]
 isOneToOne: false
       referencedRelation: "skills"
@@ -372,13 +422,13 @@ isOneToOne: true
                   ]
                 },"skills": {
                   Row: {
-                    "category": Database["public"]['Enums']["skill_category"],"created_at": string,"description": string | null,"id": string,"name": string
+                    "category": Database["public"]['Enums']["skill_category"],"created_at": string,"description": string | null,"id": string,"kind": string,"name": string
                   }
                   Insert: {
-                    "category": Database["public"]['Enums']["skill_category"],"created_at"?: string,"description"?: string | null,"id"?: string,"name": string
+                    "category": Database["public"]['Enums']["skill_category"],"created_at"?: string,"description"?: string | null,"id"?: string,"kind"?: string,"name": string
                   }
                   Update: {
-                    "category"?: Database["public"]['Enums']["skill_category"],"created_at"?: string,"description"?: string | null,"id"?: string,"name"?: string
+                    "category"?: Database["public"]['Enums']["skill_category"],"created_at"?: string,"description"?: string | null,"id"?: string,"kind"?: string,"name"?: string
                   }
                   Relationships: [
 
@@ -451,6 +501,9 @@ isOneToOne: false
                            },
 "feedback_goal_target":
 { Args: Record<PropertyKey, never>; Returns: number
+                           },
+"apply_to_job":
+{ Args: { "_answers"?: Json,"_job_id": string }; Returns: Json
                            },
 "postpone_feedback":
 { Args: { "_application_id": string,"_message": string,"_new_due_at": string }; Returns: string
