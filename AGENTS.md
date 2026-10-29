@@ -152,8 +152,9 @@ Regra de operação: configuração, nunca código por cliente.
   `ApplicationRejectedDialog` na recusa. O candidato nunca vê se o requisito é
   excludente.
 - Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
-  e importância em 3 níveis. Fórmula v2 no B1 (N32): obrigatório 1,0,
-  implícito 0,5, desejável até +15%, grupos "1 de", sinônimos e famílias.
+  e `job_skills.weight` (vaga nova grava 1,0; a importância saiu da tela no
+  N35). Fórmula v2 no B1 (N32): o papel decide o peso (obrigatório 1,0,
+  implícito 0,5, desejável até +15%), com grupos "1 de", sinônimos e famílias.
 - Faixa de compatibilidade (o que o candidato vê): altíssima, alta, compatível,
   não compatível, pela cobertura das obrigatórias (N36).
 - Origem do item: "do currículo" (1,0) ou "acrescentado" (0,7) (N90).

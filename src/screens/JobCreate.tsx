@@ -30,12 +30,6 @@ import { cn } from '@/lib/utils';
 import { EMPLOYMENT_TYPES, MAX_JOB_REQUIREMENTS } from '@/features/jobs/create-job.schema';
 import { useCreateJob } from '@/features/jobs/create-job.hooks';
 import {
-  DEFAULT_IMPORTANCE,
-  IMPORTANCE_LABELS,
-  IMPORTANCE_VALUES,
-  type ImportanceValue,
-} from '@/features/jobs/importance';
-import {
   SENIORITY_LABELS,
   SENIORITY_VALUES,
   type SeniorityValue,
@@ -76,7 +70,6 @@ interface SelectedSkill {
   kind?: string;
   requiredLevel: number;
   role: JobItemRole;
-  importance: ImportanceValue;
 }
 
 interface SelectedRequirement {
@@ -165,14 +158,13 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         kind: skill.kind,
         requiredLevel: DEFAULT_SKILL_LEVEL,
         role: DEFAULT_JOB_ITEM_ROLE,
-        importance: DEFAULT_IMPORTANCE,
       },
     ]);
   };
 
   const updateSkill = (
     skillId: string,
-    changes: Partial<Pick<SelectedSkill, 'requiredLevel' | 'role' | 'importance'>>,
+    changes: Partial<Pick<SelectedSkill, 'requiredLevel' | 'role'>>,
   ) => {
     setSelected((previous) =>
       previous.map((item) => (item.skillId === skillId ? { ...item, ...changes } : item)),
@@ -230,11 +222,10 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         salaryRange: salary,
         employmentType,
         seniority: seniority ?? undefined,
-        skills: selected.map(({ skillId, requiredLevel, role, importance }) => ({
+        skills: selected.map(({ skillId, requiredLevel, role }) => ({
           skillId,
           requiredLevel,
           role,
-          importance,
         })),
         requirements: requirements.map(({ skillId, detail, eliminatory }) => ({
           skillId,
@@ -443,13 +434,12 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Escolha competências e ferramentas do catálogo, defina o nível exigido, a importância
-                    e o papel de cada uma na vaga. Elas alimentam o Match Score dos candidatos. Máximo de {MAX_SKILLS}.
+                    Escolha competências e ferramentas do catálogo e defina o nível exigido e o papel de
+                    cada uma na vaga. Elas alimentam o Match Score dos candidatos. Máximo de {MAX_SKILLS}.
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Importância define o peso do item na média do score (Alta 1,0 · Média 0,75 ·
-                    Baixa 0,5). Obrigatório corta o score pela metade se o candidato não tiver o item;
-                    desejável e implícito contam a favor.
+                    O papel define o peso no score: obrigatório pesa mais e faz falta se o candidato não
+                    tiver o item; implícito e desejável contam a favor.
                   </p>
 
                   {/* Catalog search */}
@@ -625,29 +615,6 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                             <p className="text-xs text-muted-foreground">
                               {skillLevelDescriptor(skill.requiredLevel)}
                             </p>
-                          </div>
-
-                          {/* Importance selector */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground shrink-0">Importância:</span>
-                            <div className="flex gap-1">
-                              {IMPORTANCE_VALUES.map((value) => (
-                                <button
-                                  key={value}
-                                  type="button"
-                                  aria-pressed={skill.importance === value}
-                                  onClick={() => updateSkill(skill.skillId, { importance: value })}
-                                  className={cn(
-                                    'px-2.5 h-7 rounded-lg text-xs font-medium transition-all',
-                                    skill.importance === value
-                                      ? 'bg-gradient-purple-teal text-white'
-                                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
-                                  )}
-                                >
-                                  {IMPORTANCE_LABELS[value]}
-                                </button>
-                              ))}
-                            </div>
                           </div>
 
                           {/* Role selector */}
@@ -872,9 +839,6 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                         <div key={skill.skillId} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
                           <Target className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1">{skill.name}</span>
-                          <span className="text-[10px] text-muted-foreground shrink-0">
-                            Importância {IMPORTANCE_LABELS[skill.importance]}
-                          </span>
                           <div className="flex gap-1">
                             {Array.from({ length: MAX_SKILL_LEVEL }).map((_, j) => (
                               <div
