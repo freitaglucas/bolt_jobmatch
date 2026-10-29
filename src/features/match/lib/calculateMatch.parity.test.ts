@@ -13,6 +13,8 @@ function toJobSkills(parityCase: ParityCase): JobSkill[] {
     required_level: skill.level,
     weight: skill.weight,
     mandatory: skill.mandatory,
+    group_id: skill.group ? `${parityCase.id}-${skill.group}` : null,
+    group_min: skill.min,
   }));
 }
 

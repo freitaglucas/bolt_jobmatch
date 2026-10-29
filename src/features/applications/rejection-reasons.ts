@@ -44,6 +44,9 @@ export interface JobSkillInput {
   requiredLevel: number;
   weight: number;
   mandatory: boolean;
+  // Grupo de alternativas (N33): basta ter groupMin itens do grupo.
+  groupId?: string | null;
+  groupMin?: number;
 }
 
 export interface CandidateSkillInput {
@@ -74,8 +77,21 @@ function normalize(name: string): string {
   return name.trim().toLocaleLowerCase();
 }
 
+// Nome de um grupo de alternativas no motivo: "AWS, GCP ou Azure" (basta um)
+// ou "2 entre A, B, C ou D".
+export function groupLabel(names: readonly string[], min: number): string {
+  const sorted = [...names].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const list =
+    sorted.length <= 1
+      ? (sorted[0] ?? '')
+      : `${sorted.slice(0, -1).join(', ')} ou ${sorted[sorted.length - 1]}`;
+  return min > 1 ? `${min} entre ${list}` : list;
+}
+
 // Lacunas e pontos fortes de um candidato frente aos requisitos da vaga, na
-// mesma base do calculo do match (nome sem diferenciar maiusculas).
+// mesma base do calculo do match (nome sem diferenciar maiusculas). Um grupo de
+// alternativas (N33) conta como um item: falta so se o candidato tiver menos
+// itens que o minimo; se atende, so os melhores itens do grupo contam.
 export function buildMatchInsights(
   jobSkills: readonly JobSkillInput[],
   candidateSkills: readonly CandidateSkillInput[],
@@ -89,7 +105,49 @@ export function buildMatchInsights(
   const below: (BelowLevelItem & { weight: number; mandatory: boolean })[] = [];
   const strengths: { skill: string; weight: number; declared: number }[] = [];
 
+  const ungrouped: JobSkillInput[] = [];
+  const groups = new Map<string, JobSkillInput[]>();
   for (const jobSkill of jobSkills) {
+    if (jobSkill.groupId) {
+      const current = groups.get(jobSkill.groupId) ?? [];
+      current.push(jobSkill);
+      groups.set(jobSkill.groupId, current);
+    } else {
+      ungrouped.push(jobSkill);
+    }
+  }
+
+  const counted: JobSkillInput[] = [...ungrouped];
+  for (const members of groups.values()) {
+    const needed = Math.min(
+      Math.max(1, ...members.map((member) => member.groupMin ?? 1)),
+      members.length,
+    );
+    const ranked = members
+      .map((member) => ({
+        member,
+        declared: declaredByName.get(normalize(member.skillName)) ?? 0,
+      }))
+      .sort(
+        (a, b) =>
+          Math.min(b.declared / b.member.requiredLevel, 1) -
+            Math.min(a.declared / a.member.requiredLevel, 1) ||
+          a.member.skillName.localeCompare(b.member.skillName, 'pt-BR'),
+      );
+    const present = ranked.filter((item) => item.declared > 0).length;
+    if (present < needed) {
+      if (members.some((member) => member.mandatory)) {
+        missing.push({
+          skill: groupLabel(members.map((member) => member.skillName), needed),
+          weight: Math.max(...members.map((member) => member.weight)),
+        });
+      }
+      continue;
+    }
+    counted.push(...ranked.slice(0, needed).map((item) => item.member));
+  }
+
+  for (const jobSkill of counted) {
     const declared = declaredByName.get(normalize(jobSkill.skillName)) ?? 0;
     if (declared <= 0) {
       if (jobSkill.mandatory) {

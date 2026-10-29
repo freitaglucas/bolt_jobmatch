@@ -7,6 +7,7 @@ import {
   buildRejectionBody,
   groupByReason,
   joinList,
+  groupLabel,
   levelLabel,
   resolveReasons,
   suggestReason,
@@ -224,5 +225,43 @@ describe('buildRejectionBody', () => {
     for (const reason of REASON_CODES) {
       expect(buildRejectionBody({ ...input, reason })).not.toMatch(/\d/);
     }
+  });
+});
+
+describe('grupos de alternativas (N33)', () => {
+  const CLOUD: JobSkillInput[] = [
+    { skillName: 'AWS', requiredLevel: 2, weight: 1, mandatory: true, groupId: 'g1', groupMin: 1 },
+    { skillName: 'GCP', requiredLevel: 2, weight: 1, mandatory: true, groupId: 'g1', groupMin: 1 },
+    { skillName: 'Azure', requiredLevel: 2, weight: 1, mandatory: true, groupId: 'g1', groupMin: 1 },
+    { skillName: 'SQL', requiredLevel: 2, weight: 1, mandatory: true },
+  ];
+
+  it('nomeia o grupo como um item so', () => {
+    expect(groupLabel(['GCP', 'AWS', 'Azure'], 1)).toBe('AWS, Azure ou GCP');
+    expect(groupLabel(['A', 'B', 'C', 'D'], 2)).toBe('2 entre A, B, C ou D');
+  });
+
+  it('grupo obrigatorio sem nenhum item vira uma falta so', () => {
+    const insights = buildMatchInsights(CLOUD, [{ skillName: 'SQL', declaredLevel: 2 }]);
+    expect(insights.missing).toEqual(['AWS, Azure ou GCP']);
+    expect(insights.strengths).toEqual(['SQL']);
+  });
+
+  it('grupo atendido conta so o melhor item, sem acusar os outros', () => {
+    const insights = buildMatchInsights(CLOUD, [
+      { skillName: 'GCP', declaredLevel: 3 },
+      { skillName: 'Azure', declaredLevel: 1 },
+      { skillName: 'SQL', declaredLevel: 2 },
+    ]);
+    expect(insights.missing).toEqual([]);
+    expect(insights.below).toEqual([]);
+    expect(insights.strengths).toEqual(['GCP', 'SQL']);
+  });
+
+  it('grupo desejavel ausente nao vira falta', () => {
+    const optional = CLOUD.map((skill) =>
+      skill.groupId ? { ...skill, mandatory: false } : skill,
+    );
+    expect(buildMatchInsights(optional, [{ skillName: 'SQL', declaredLevel: 2 }]).missing).toEqual([]);
   });
 });

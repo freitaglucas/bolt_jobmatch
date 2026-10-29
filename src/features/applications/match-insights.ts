@@ -14,7 +14,10 @@ export interface InsightsSourceRows {
     required_level: number;
     weight: number | string;
     mandatory: boolean;
+    group_id?: string | null;
   }[];
+  // Grupos de alternativas (N33).
+  groups?: { id: string; min_count: number }[];
   candidateSkills: { candidate_id: string; skill_id: string; declared_level: number }[];
   skills: { id: string; name: string }[];
 }
@@ -24,6 +27,7 @@ export function buildInsightsByApplication(
   rows: InsightsSourceRows,
 ): Record<string, MatchInsights> {
   const skillNames = new Map(rows.skills.map((skill) => [skill.id, skill.name]));
+  const groupMins = new Map((rows.groups ?? []).map((group) => [group.id, group.min_count]));
 
   const jobSkillsByJob = new Map<string, JobSkillInput[]>();
   for (const row of rows.jobSkills) {
@@ -37,6 +41,8 @@ export function buildInsightsByApplication(
       requiredLevel: Number(row.required_level),
       weight: Number(row.weight),
       mandatory: row.mandatory,
+      groupId: row.group_id ?? null,
+      groupMin: row.group_id ? (groupMins.get(row.group_id) ?? 1) : undefined,
     });
     jobSkillsByJob.set(row.job_id, list);
   }

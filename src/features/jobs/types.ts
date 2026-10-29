@@ -17,4 +17,7 @@ export interface JobSkill {
   required_level: number;
   weight: number;
   mandatory: boolean;
+  // Grupo de alternativas (N33): o candidato precisa de group_min itens do grupo.
+  group_id?: string | null;
+  group_min?: number;
 }
