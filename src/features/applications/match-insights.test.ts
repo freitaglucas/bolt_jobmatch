@@ -47,3 +47,22 @@ describe('buildInsightsByApplication', () => {
     expect(result['app-1']).toEqual({ missing: [], below: [], strengths: [] });
   });
 });
+
+describe('buildInsightsByApplication com grupos (N33)', () => {
+  it('le o minimo do grupo e conta o grupo como um item', () => {
+    const result = buildInsightsByApplication({
+      applications: [{ id: 'app-1', job_id: 'job-1', candidate_id: 'cand-1' }],
+      jobSkills: [
+        { job_id: 'job-1', skill_id: 'aws', required_level: 2, weight: 1, mandatory: true, group_id: 'g1' },
+        { job_id: 'job-1', skill_id: 'gcp', required_level: 2, weight: 1, mandatory: true, group_id: 'g1' },
+      ],
+      candidateSkills: [],
+      skills: [
+        { id: 'aws', name: 'AWS' },
+        { id: 'gcp', name: 'GCP' },
+      ],
+      groups: [{ id: 'g1', min_count: 1 }],
+    });
+    expect(result['app-1']?.missing).toEqual(['AWS ou GCP']);
+  });
+});

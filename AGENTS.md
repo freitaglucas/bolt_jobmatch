@@ -151,6 +151,12 @@ Regra de operação: configuração, nunca código por cliente.
   `RequirementsDialog` quando a vaga tem requisito e o
   `ApplicationRejectedDialog` na recusa. O candidato nunca vê se o requisito é
   excludente.
+- Grupo de alternativas (`job_skill_groups`, N33): itens equivalentes da vaga
+  ("1 de: AWS, GCP, Azure"; "2 de 4"). No score o grupo vale como um item
+  (maior peso; nota = média das `min_count` melhores); obrigatório com menos
+  itens que o mínimo conta como ausente. Os itens herdam o papel do grupo. A
+  regra está em `calculate_application_match_score` e em `calculateMatch`, com
+  paridade no CI; no motivo de retorno o grupo aparece como um item só.
 - Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
   e `job_skills.weight` (vaga nova grava 1,0; a importância saiu da tela no
   N35). Fórmula v2 no B1 (N32): o papel decide o peso (obrigatório 1,0,

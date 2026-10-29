@@ -307,15 +307,34 @@ isOneToOne: false
       referencedColumns: ["user_id"]
     }
                   ]
-                },"job_skills": {
+                },"job_skill_groups": {
                   Row: {
-                    "created_at": string,"id": string,"job_id": string,"mandatory": boolean,"required_level": number,"role": string,"skill_id": string,"weight": number
+                    "created_at": string,"id": string,"job_id": string,"min_count": number,"role": string
                   }
                   Insert: {
-                    "created_at"?: string,"id"?: string,"job_id": string,"mandatory"?: boolean,"required_level": number,"role"?: string,"skill_id": string,"weight": number
+                    "created_at"?: string,"id"?: string,"job_id": string,"min_count"?: number,"role"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"job_id"?: string,"mandatory"?: boolean,"required_level"?: number,"role"?: string,"skill_id"?: string,"weight"?: number
+                    "created_at"?: string,"id"?: string,"job_id"?: string,"min_count"?: number,"role"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "job_skill_groups_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"job_skills": {
+                  Row: {
+                    "created_at": string,"group_id": string | null,"id": string,"job_id": string,"mandatory": boolean,"required_level": number,"role": string,"skill_id": string,"weight": number
+                  }
+                  Insert: {
+                    "created_at"?: string,"group_id"?: string | null,"id"?: string,"job_id": string,"mandatory"?: boolean,"required_level": number,"role"?: string,"skill_id": string,"weight": number
+                  }
+                  Update: {
+                    "created_at"?: string,"group_id"?: string | null,"id"?: string,"job_id"?: string,"mandatory"?: boolean,"required_level"?: number,"role"?: string,"skill_id"?: string,"weight"?: number
                   }
                   Relationships: [
                     {
@@ -323,6 +342,12 @@ isOneToOne: false
       columns: ["job_id"]
 isOneToOne: false
       referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_skills_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "job_skill_groups"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "job_skills_skill_id_fkey"

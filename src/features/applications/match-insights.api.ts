@@ -44,8 +44,16 @@ export async function loadMatchInsights(
     (ids) =>
       supabase
         .from('job_skills')
-        .select('job_id, skill_id, required_level, weight, mandatory')
+        .select('job_id, skill_id, required_level, weight, mandatory, group_id')
         .in('job_id', ids),
+  );
+  // Grupos de alternativas (N33): o minimo de cada grupo.
+  const groupIds = unique(
+    jobSkills.flatMap((row) => (row.group_id ? [row.group_id] : [])),
+  );
+  const groups = await inChunks<NonNullable<InsightsSourceRows['groups']>[number]>(
+    groupIds,
+    (ids) => supabase.from('job_skill_groups').select('id, min_count').in('id', ids),
   );
   const candidateSkills = await inChunks<InsightsSourceRows['candidateSkills'][number]>(
     unique(applications.map((application) => application.candidate_id)),
@@ -78,7 +86,7 @@ export async function loadMatchInsights(
   );
 
   return withUnmetRequirements(
-    buildInsightsByApplication({ applications, jobSkills, candidateSkills, skills }),
+    buildInsightsByApplication({ applications, jobSkills, candidateSkills, skills, groups }),
     unmetAnswers,
   );
 }
