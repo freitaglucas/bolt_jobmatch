@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Award,
   Check,
+  Layers,
   ListChecks,
   Plus,
   Trash2,
@@ -27,7 +28,19 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EMPLOYMENT_TYPES, MAX_JOB_REQUIREMENTS } from '@/features/jobs/create-job.schema';
+import {
+  EMPLOYMENT_TYPES,
+  MAX_JOB_REQUIREMENTS,
+  MAX_SKILL_GROUPS,
+} from '@/features/jobs/create-job.schema';
+import {
+  groupMembers,
+  groupRuleText,
+  minOptions,
+  nextGroupKey,
+  validateGroups,
+  type DraftGroup,
+} from '@/features/jobs/skill-groups';
 import { useCreateJob } from '@/features/jobs/create-job.hooks';
 import {
   SENIORITY_LABELS,
@@ -70,6 +83,8 @@ interface SelectedSkill {
   kind?: string;
   requiredLevel: number;
   role: JobItemRole;
+  // Grupo de alternativas (N33).
+  groupKey?: string;
 }
 
 interface SelectedRequirement {
@@ -126,6 +141,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
   const [categoryFilter, setCategoryFilter] = useState<SkillGroup | null>(null);
   const [showAllSkills, setShowAllSkills] = useState(false);
   const [requirements, setRequirements] = useState<SelectedRequirement[]>([]);
+  const [groups, setGroups] = useState<DraftGroup[]>([]);
 
   const onboarding = useRecruiterOnboarding();
   const companyName = onboarding.data?.companyName ?? null;
@@ -175,6 +191,50 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
     setSelected((previous) => previous.filter((item) => item.skillId !== skillId));
   };
 
+  const addGroup = () => {
+    if (groups.length >= MAX_SKILL_GROUPS) return;
+    setGroups((previous) => [
+      ...previous,
+      { key: nextGroupKey(previous), minCount: 1, role: 'required' },
+    ]);
+  };
+
+  const removeGroup = (key: string) => {
+    setGroups((previous) => previous.filter((group) => group.key !== key));
+    setSelected((previous) =>
+      previous.map((item) => (item.groupKey === key ? { ...item, groupKey: undefined } : item)),
+    );
+  };
+
+  const updateGroup = (key: string, changes: Partial<Pick<DraftGroup, 'minCount' | 'role'>>) => {
+    setGroups((previous) =>
+      previous.map((group) => (group.key === key ? { ...group, ...changes } : group)),
+    );
+  };
+
+  // Entra ou sai do grupo; o minimo acompanha o tamanho do grupo.
+  const toggleGroupMember = (skillId: string, key: string) => {
+    const next = selected.map((item) =>
+      item.skillId === skillId
+        ? { ...item, groupKey: item.groupKey === key ? undefined : key }
+        : item,
+    );
+    setSelected(next);
+    const size = groupMembers(next, key).length;
+    setGroups((previous) =>
+      previous.map((group) =>
+        group.key === key
+          ? { ...group, minCount: Math.max(1, Math.min(group.minCount, size - 1)) }
+          : group,
+      ),
+    );
+  };
+
+  const groupOf = (skill: SelectedSkill) =>
+    skill.groupKey ? groups.find((group) => group.key === skill.groupKey) : undefined;
+  const effectiveRole = (skill: SelectedSkill): JobItemRole => groupOf(skill)?.role ?? skill.role;
+  const groupError = validateGroups(selected, groups);
+
   const addRequirement = (option: RequirementOption) => {
     if (requirements.length >= MAX_JOB_REQUIREMENTS) return;
     if (requirements.some((item) => item.skillId === option.id)) return;
@@ -209,7 +269,9 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         description.trim().length >= 20
       );
     }
-    if (step === 1) return selected.length >= 1 && selected.length <= MAX_SKILLS;
+    if (step === 1) {
+      return selected.length >= 1 && selected.length <= MAX_SKILLS && groupError === null;
+    }
     return true;
   };
 
@@ -222,11 +284,13 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
         salaryRange: salary,
         employmentType,
         seniority: seniority ?? undefined,
-        skills: selected.map(({ skillId, requiredLevel, role }) => ({
+        skills: selected.map(({ skillId, requiredLevel, role, groupKey }) => ({
           skillId,
           requiredLevel,
           role,
+          groupKey,
         })),
+        groups: groups.map(({ key, minCount, role }) => ({ key, minCount, role })),
         requirements: requirements.map(({ skillId, detail, eliminatory }) => ({
           skillId,
           detail,
@@ -618,6 +682,13 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                           </div>
 
                           {/* Role selector */}
+                          {groupOf(skill) ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Layers className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                              Alternativa no grupo {groups.findIndex((group) => group.key === skill.groupKey) + 1}{' '}
+                              · papel do grupo: {JOB_ITEM_ROLE_LABELS[effectiveRole(skill)]}
+                            </div>
+                          ) : (
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs text-muted-foreground shrink-0">Papel na vaga:</span>
@@ -644,6 +715,7 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                               {JOB_ITEM_ROLE_HINTS[skill.role]}
                             </p>
                           </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -651,16 +723,134 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                 </CardContent>
               </Card>
 
+              {/* Alternativas (N33) */}
+              {(selected.length >= 2 || groups.length > 0) && (
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Layers className="h-5 w-5 text-primary" />
+                      Alternativas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Junte itens equivalentes: o candidato precisa de só alguns deles. Ex.: 1 de AWS,
+                      GCP ou Azure. Opcional. No score, o grupo vale como um item.
+                    </p>
+
+                    {groups.map((group, index) => {
+                      const members = groupMembers(selected, group.key);
+                      const options = selected.filter(
+                        (skill) => !skill.groupKey || skill.groupKey === group.key,
+                      );
+                      return (
+                        <div key={group.key} className="space-y-3 p-3 rounded-xl border border-border">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-sm">Grupo de alternativas {index + 1}</p>
+                            <button
+                              type="button"
+                              onClick={() => removeGroup(group.key)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              aria-label={`Remover grupo de alternativas ${index + 1}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Toque nos itens equivalentes:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {options.map((skill) => (
+                              <button
+                                key={skill.skillId}
+                                type="button"
+                                aria-pressed={skill.groupKey === group.key}
+                                onClick={() => toggleGroupMember(skill.skillId, group.key)}
+                                className={cn(
+                                  'min-h-9 px-3 py-1.5 rounded-lg border text-sm transition-all',
+                                  skill.groupKey === group.key
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-border text-muted-foreground hover:border-primary/30',
+                                )}
+                              >
+                                {skill.name}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Label htmlFor={`group-min-${group.key}`} className="text-xs text-muted-foreground">
+                              O candidato precisa de
+                            </Label>
+                            <select
+                              id={`group-min-${group.key}`}
+                              value={group.minCount}
+                              onChange={(e) => updateGroup(group.key, { minCount: Number(e.target.value) })}
+                              className="h-9 rounded-lg border border-border bg-background px-2 text-sm"
+                            >
+                              {minOptions(members.length).map((count) => (
+                                <option key={count} value={count}>
+                                  {count}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="text-xs text-muted-foreground">
+                              de {members.length} {members.length === 1 ? 'item marcado' : 'itens marcados'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-muted-foreground shrink-0">Papel do grupo:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {JOB_ITEM_ROLES.map((role) => (
+                                <button
+                                  key={role}
+                                  type="button"
+                                  aria-pressed={group.role === role}
+                                  onClick={() => updateGroup(group.key, { role })}
+                                  className={cn(
+                                    'h-7 px-2.5 rounded-lg text-xs font-medium transition-all',
+                                    group.role === role
+                                      ? 'bg-gradient-purple-teal text-white'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                                  )}
+                                >
+                                  {JOB_ITEM_ROLE_LABELS[role]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {groupError && (
+                      <p role="alert" className="text-sm text-destructive">
+                        {groupError}
+                      </p>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      disabled={groups.length >= MAX_SKILL_GROUPS || selected.length < 2}
+                      onClick={addGroup}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Novo grupo de alternativas
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Match preview */}
               {selected.length > 0 && (
                 <Card className="border-border bg-gradient-purple-teal-soft">
                   <CardContent className="p-4 flex items-center gap-3">
                     <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <p className="text-sm text-muted-foreground">
-                      {selected.filter((s) => s.role === 'required').length} obrigatório(s),{' '}
-                      {selected.filter((s) => s.role === 'preferred').length} desejável(eis) e{' '}
-                      {selected.filter((s) => s.role === 'implicit').length} implícito(s). O Match Score será
-                      calculado com base nestes itens para cada candidato.
+                      {selected.filter((s) => effectiveRole(s) === 'required').length} obrigatório(s),{' '}
+                      {selected.filter((s) => effectiveRole(s) === 'preferred').length} desejável(eis) e{' '}
+                      {selected.filter((s) => effectiveRole(s) === 'implicit').length} implícito(s)
+                      {groups.length > 0 ? `, com ${groups.length} grupo(s) de alternativas` : ''}. O Match Score
+                      será calculado com base nestes itens para cada candidato.
                     </p>
                   </CardContent>
                 </Card>
@@ -850,8 +1040,17 @@ export function JobCreate({ onBack, onPublished }: JobCreateProps) {
                               />
                             ))}
                           </div>
-                          <Badge variant={roleBadgeVariant(skill.role)} className="text-[10px]">
-                            {JOB_ITEM_ROLE_LABELS[skill.role]}
+                          {groupOf(skill) && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Alternativa ·{' '}
+                              {groupRuleText(
+                                groupOf(skill)?.minCount ?? 1,
+                                groupMembers(selected, skill.groupKey ?? '').length,
+                              )}
+                            </Badge>
+                          )}
+                          <Badge variant={roleBadgeVariant(effectiveRole(skill))} className="text-[10px]">
+                            {JOB_ITEM_ROLE_LABELS[effectiveRole(skill)]}
                           </Badge>
                         </div>
                       ))}

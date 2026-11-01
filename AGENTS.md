@@ -156,7 +156,9 @@ Regra de operação: configuração, nunca código por cliente.
   (maior peso; nota = média das `min_count` melhores); obrigatório com menos
   itens que o mínimo conta como ausente. Os itens herdam o papel do grupo. A
   regra está em `calculate_application_match_score` e em `calculateMatch`, com
-  paridade no CI; no motivo de retorno o grupo aparece como um item só.
+  paridade no CI; no motivo de retorno o grupo aparece como um item só. Na
+  tela, os totais do candidato contam o grupo uma vez e o item que falta num
+  grupo atendido aparece como "Alternativa" (`src/features/match/lib/item-status.ts`).
 - Match score: 0–100 por item da vaga, determinístico. Hoje: régua de 3 níveis
   e `job_skills.weight` (vaga nova grava 1,0; a importância saiu da tela no
   N35). Fórmula v2 no B1 (N32): o papel decide o peso (obrigatório 1,0,

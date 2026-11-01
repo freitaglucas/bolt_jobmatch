@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   XCircle,
   Heart,
+  Layers,
   ListChecks,
   Share2,
 } from 'lucide-react';
@@ -23,6 +24,12 @@ import { ReturnAssurance } from '@/features/return-seal/components/ReturnAssuran
 import { useReturnSeals } from '@/features/return-seal/hooks';
 import { cn } from '@/lib/utils';
 import { MAX_SKILL_LEVEL, skillLevelName } from '@/features/skills/levels';
+import {
+  displayOrder,
+  groupHint,
+  summarizeItems,
+  type ItemStatus,
+} from '@/features/match/lib/item-status';
 
 interface JobDetailProps {
   job: Job;
@@ -31,18 +38,13 @@ interface JobDetailProps {
   alreadyApplied?: boolean;
 }
 
-function SkillDetail({ skill }: { skill: SkillRequirement }) {
-  const status =
-    skill.candidateLevel === 0
-      ? 'missing'
-      : skill.candidateLevel >= skill.level
-        ? 'match'
-        : 'gap';
-
+function SkillDetail({ skill, status }: { skill: SkillRequirement; status: ItemStatus }) {
   const config = {
     match: { icon: CheckCircle2, color: 'text-jm-teal', bg: 'bg-jm-teal/10', label: 'Compatível' },
     gap: { icon: AlertTriangle, color: 'text-jm-orange', bg: 'bg-jm-orange/10', label: 'Gap' },
     missing: { icon: XCircle, color: 'text-jm-red', bg: 'bg-jm-red/10', label: 'Ausente' },
+    // Item de um grupo ja atendido (N33): nao faz falta.
+    alternative: { icon: Layers, color: 'text-muted-foreground', bg: 'bg-muted/40', label: 'Alternativa' },
   };
 
   const c = config[status];
@@ -100,9 +102,23 @@ function SkillDetail({ skill }: { skill: SkillRequirement }) {
 
 export function JobDetail({ job, onBack, onApply, alreadyApplied }: JobDetailProps) {
   const seals = useReturnSeals([job.id]);
-  const matchSkills = job.skills.filter((s) => s.candidateLevel >= s.level).length;
-  const gapSkills = job.skills.filter((s) => s.candidateLevel > 0 && s.candidateLevel < s.level).length;
-  const missingSkills = job.skills.filter((s) => s.candidateLevel === 0).length;
+  // Grupo de alternativas (N33) conta como um item nos totais.
+  const statusItems = job.skills.map((s) => ({
+    required: s.level,
+    declared: s.candidateLevel,
+    groupId: s.groupId,
+    groupMin: s.groupMin,
+  }));
+  const summary = summarizeItems(statusItems);
+  const matchSkills = summary.counts.match;
+  const gapSkills = summary.counts.gap;
+  const missingSkills = summary.counts.missing;
+  const groupSizes = new Map<string, number>();
+  for (const skill of job.skills) {
+    if (skill.groupId) {
+      groupSizes.set(skill.groupId, (groupSizes.get(skill.groupId) ?? 0) + 1);
+    }
+  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -226,9 +242,22 @@ export function JobDetail({ job, onBack, onApply, alreadyApplied }: JobDetailPro
 
             {/* Skills detail */}
             <div className="space-y-2">
-              {job.skills.map((skill, i) => (
-                <SkillDetail key={i} skill={skill} />
-              ))}
+              {displayOrder(statusItems).map((index, position, order) => {
+                const skill = job.skills[index] as SkillRequirement;
+                const previous = position > 0 ? job.skills[order[position - 1] as number] : undefined;
+                const startsGroup = Boolean(skill.groupId) && previous?.groupId !== skill.groupId;
+                return (
+                  <div key={index} className="space-y-2">
+                    {startsGroup && (
+                      <p className="flex items-center gap-1.5 pt-1 text-xs font-medium text-muted-foreground">
+                        <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+                        {groupHint(skill.groupMin ?? 1, groupSizes.get(skill.groupId ?? '') ?? 1)}:
+                      </p>
+                    )}
+                    <SkillDetail skill={skill} status={summary.statuses[index] ?? 'missing'} />
+                  </div>
+                );
+              })}
             </div>
 
             {/* Legend */}

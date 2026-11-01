@@ -48,6 +48,18 @@ export async function getActiveJobs(): Promise<Job[]> {
     throw jobSkillsError;
   }
 
+  // Grupos de alternativas (N33): o minimo de cada grupo.
+  const { data: groupRows, error: groupsError } = await supabase
+    .from('job_skill_groups')
+    .select('id, min_count')
+    .in('job_id', jobIds);
+
+  if (groupsError) {
+    throw groupsError;
+  }
+
+  const groupMins = new Map(groupRows.map((group) => [group.id, group.min_count]));
+
   // Requisitos sim/nao (N31). O candidato nao le se o requisito e excludente.
   const { data: requirementRows, error: requirementsError } = await supabase
     .from('job_requirements')
@@ -122,6 +134,8 @@ export async function getActiveJobs(): Promise<Job[]> {
               candidateLevel: 0,
               mandatory: jobSkill.mandatory,
               weight: jobSkill.weight,
+              groupId: jobSkill.group_id,
+              groupMin: jobSkill.group_id ? (groupMins.get(jobSkill.group_id) ?? 1) : undefined,
             }]
           : [];
       }),

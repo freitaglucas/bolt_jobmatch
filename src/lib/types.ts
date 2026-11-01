@@ -12,6 +12,9 @@ export interface SkillRequirement {
   candidateLevel: number; // 0 = missing, 1-3 = has it
   mandatory: boolean;
   weight?: number;
+  // Grupo de alternativas (N33).
+  groupId?: string | null;
+  groupMin?: number;
 }
 
 // Requisito sim/nao da vaga como o candidato ve (N31). Se e excludente nao vem.
