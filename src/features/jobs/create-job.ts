@@ -4,6 +4,7 @@ import {
   CreateJobSchema,
   type CreateJobData,
   type CreateJobInput,
+  type JobSkillGroupInput,
   type JobSkillInput,
 } from './create-job.schema';
 import { DEFAULT_IMPORTANCE, weightForImportance } from './importance';
@@ -20,15 +21,40 @@ export interface JobSkillRow {
   weight: number;
   mandatory: boolean;
   role: JobItemRole;
+  group_id?: string;
+}
+
+export interface JobSkillGroupRow {
+  id: string;
+  job_id: string;
+  min_count: number;
+  role: JobItemRole;
+}
+
+// Grupos de alternativas (N33). O id nasce aqui para os itens apontarem para ele.
+export function buildJobSkillGroupRows(
+  jobId: string,
+  groups: JobSkillGroupInput[],
+  newId: () => string = () => crypto.randomUUID(),
+): JobSkillGroupRow[] {
+  return groups.map((group) => ({
+    id: newId(),
+    job_id: jobId,
+    min_count: group.minCount,
+    role: group.role,
+  }));
 }
 
 export function buildJobSkillRows(
   jobId: string,
   skills: JobSkillInput[],
+  groups: { key: string; row: JobSkillGroupRow }[] = [],
 ): JobSkillRow[] {
+  const groupsByKey = new Map(groups.map((group) => [group.key, group.row]));
   return skills.map((skill) => {
-    const role = skill.role ?? roleFromMandatory(skill.mandatory ?? false);
-    return {
+    const group = skill.groupKey ? groupsByKey.get(skill.groupKey) : undefined;
+    const role = group?.role ?? skill.role ?? roleFromMandatory(skill.mandatory ?? false);
+    const row: JobSkillRow = {
       job_id: jobId,
       skill_id: skill.skillId,
       required_level: skill.requiredLevel,
@@ -36,6 +62,7 @@ export function buildJobSkillRows(
       mandatory: isMandatoryRole(role),
       role,
     };
+    return group ? { ...row, group_id: group.id } : row;
   });
 }
 
@@ -98,9 +125,24 @@ export async function createJob(input: CreateJobInput): Promise<{ id: string }> 
 
   const jobId = jobRow.id;
 
+  const groupRows = buildJobSkillGroupRows(jobId, data.groups);
+  if (groupRows.length > 0) {
+    const { error: groupsError } = await supabase.from('job_skill_groups').insert(groupRows);
+    if (groupsError) {
+      await supabase.from('jobs').delete().eq('id', jobId);
+      throw new Error('Não foi possível salvar os grupos de alternativas. Tente novamente.');
+    }
+  }
+
   const { error: skillsError } = await supabase
     .from('job_skills')
-    .insert(buildJobSkillRows(jobId, data.skills));
+    .insert(
+      buildJobSkillRows(
+        jobId,
+        data.skills,
+        data.groups.map((group, index) => ({ key: group.key, row: groupRows[index] as JobSkillGroupRow })),
+      ),
+    );
 
   if (skillsError) {
     await supabase.from('jobs').delete().eq('id', jobId);

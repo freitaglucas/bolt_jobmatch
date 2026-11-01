@@ -39,4 +39,20 @@ describe('calculateSwipeMatch', () => {
     expect(result.score).toBe(100);
     expect(result.score).not.toBe(mockJobs[1].matchScore);
   });
+
+  it('passes the alternative groups to the Match Score engine (N33)', () => {
+    const job = {
+      ...mockJobs[0],
+      skills: [
+        { name: 'AWS', level: 2, candidateLevel: 0, mandatory: true, weight: 1, groupId: 'g1', groupMin: 1 },
+        { name: 'GCP', level: 2, candidateLevel: 0, mandatory: true, weight: 1, groupId: 'g1', groupMin: 1 },
+      ],
+    };
+    const result = calculateSwipeMatch(job, [
+      { skill_name: 'GCP', declared_level: 2, evidenced_by_project: false },
+    ]);
+
+    expect(result.score).toBe(100);
+    expect(result.factors[0]?.group).toEqual({ id: 'g1', min: 1, size: 2, met: true });
+  });
 });

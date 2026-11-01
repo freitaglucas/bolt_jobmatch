@@ -15,6 +15,8 @@ export function calculateSwipeMatch(
     // TODO(mock): Remove fallback when legacy fixture-based Job values are retired.
     weight: skill.weight ?? 1,
     mandatory: skill.mandatory,
+    group_id: skill.groupId ?? null,
+    group_min: skill.groupMin,
   }));
 
   return calculateMatch(jobSkills, candidateSkills);

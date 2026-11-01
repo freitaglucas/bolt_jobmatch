@@ -17,7 +17,12 @@ vi.mock('../recruiters/api', () => ({
   getRecruiterOnboarding: mocks.getRecruiterOnboarding,
 }));
 
-import { buildJobRequirementRows, buildJobSkillRows, createJob } from './create-job';
+import {
+  buildJobRequirementRows,
+  buildJobSkillGroupRows,
+  buildJobSkillRows,
+  createJob,
+} from './create-job';
 import { CreateJobSchema, type CreateJobInput } from './create-job.schema';
 
 type MockFn = ReturnType<typeof vi.fn>;
@@ -126,6 +131,26 @@ describe('CreateJobSchema', () => {
     expect(CreateJobSchema.safeParse(validInput({ requirements: many })).success).toBe(false);
   });
 
+  it('accepts a group of alternatives and rejects a group with one item', () => {
+    const skills = [
+      { skillId: SKILL_A, requiredLevel: 2, groupKey: 'g1' },
+      { skillId: SKILL_B, requiredLevel: 2, groupKey: 'g1' },
+    ];
+    const groups = [{ key: 'g1', minCount: 1, role: 'required' as const }];
+    expect(CreateJobSchema.safeParse(validInput({ skills, groups })).success).toBe(true);
+
+    const lonely = CreateJobSchema.safeParse(
+      validInput({
+        skills: [{ skillId: SKILL_A, requiredLevel: 2, groupKey: 'g1' }],
+        groups,
+      }),
+    );
+    expect(lonely.success).toBe(false);
+    expect(lonely.error?.issues[0]?.message).toBe(
+      'O grupo de alternativas 1 precisa de pelo menos 2 itens.',
+    );
+  });
+
   it('accepts the role of each item', () => {
     const skills = [{ skillId: SKILL_A, requiredLevel: 2, role: 'implicit' as const }];
     expect(CreateJobSchema.safeParse(validInput({ skills })).success).toBe(true);
@@ -159,6 +184,30 @@ describe('buildJobSkillRows', () => {
     ).toEqual([
       { role: 'implicit', mandatory: false },
       { role: 'required', mandatory: true },
+    ]);
+  });
+});
+
+describe('buildJobSkillGroupRows', () => {
+  it('creates the group rows with their own id', () => {
+    expect(
+      buildJobSkillGroupRows('job-1', [{ key: 'g1', minCount: 2, role: 'implicit' }], () => 'grp-1'),
+    ).toEqual([{ id: 'grp-1', job_id: 'job-1', min_count: 2, role: 'implicit' }]);
+  });
+
+  it('items in a group point to it and take its role', () => {
+    const row = { id: 'grp-1', job_id: 'job-1', min_count: 1, role: 'required' as const };
+    const rows = buildJobSkillRows(
+      'job-1',
+      [
+        { skillId: SKILL_A, requiredLevel: 2, role: 'preferred', groupKey: 'g1' },
+        { skillId: SKILL_B, requiredLevel: 2, role: 'preferred' },
+      ],
+      [{ key: 'g1', row }],
+    );
+    expect(rows.map(({ role, mandatory, group_id }) => ({ role, mandatory, group_id }))).toEqual([
+      { role: 'required', mandatory: true, group_id: 'grp-1' },
+      { role: 'preferred', mandatory: false, group_id: undefined },
     ]);
   });
 });
@@ -233,6 +282,47 @@ describe('createJob', () => {
     ]);
     expect(activateChain.update).toHaveBeenCalledWith({ status: 'active' });
     expect(activateChain.eq).toHaveBeenCalledWith('id', 'job-1');
+  });
+
+  it('saves the groups before the skills', async () => {
+    const insertJobChain = buildChain({ data: { id: 'job-1' }, error: null });
+    const activateChain = buildChain({ error: null });
+    const groupsChain = buildChain({ error: null });
+    const skillsChain = buildChain({ error: null });
+    const jobsChains = [insertJobChain, activateChain];
+    const calls: string[] = [];
+    let jobsCall = 0;
+
+    mocks.from.mockImplementation((table: string) => {
+      calls.push(table);
+      if (table === 'jobs') {
+        const chain = jobsChains[jobsCall] ?? buildChain({ error: null });
+        jobsCall += 1;
+        return chain;
+      }
+      if (table === 'job_skill_groups') {
+        return groupsChain;
+      }
+      if (table === 'job_skills') {
+        return skillsChain;
+      }
+      return buildChain({ error: null });
+    });
+
+    await createJob(
+      validInput({
+        skills: [
+          { skillId: SKILL_A, requiredLevel: 2, groupKey: 'g1' },
+          { skillId: SKILL_B, requiredLevel: 2, groupKey: 'g1' },
+        ],
+        groups: [{ key: 'g1', minCount: 1, role: 'required' }],
+      }),
+    );
+
+    expect(calls).toEqual(['jobs', 'job_skill_groups', 'job_skills', 'jobs']);
+    const [groupRow] = groupsChain.insert.mock.calls[0]?.[0] as { id: string }[];
+    const skillRows = skillsChain.insert.mock.calls[0]?.[0] as { group_id?: string }[];
+    expect(skillRows.map((row) => row.group_id)).toEqual([groupRow?.id, groupRow?.id]);
   });
 
   it('saves the requirements after the skills', async () => {

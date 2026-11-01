@@ -35,6 +35,7 @@ import { useReturnSeals } from '@/features/return-seal/hooks';
 import { useMyMatchSkills } from '@/features/candidates/hooks';
 import { calculateSwipeMatch } from '@/features/match/adapters/swipeMatchAdapter';
 import type { CandidateSkill, MatchFactor } from '@/features/match/types';
+import { summarizeItems, type ItemStatus } from '@/features/match/lib/item-status';
 import { cn } from '@/lib/utils';
 import { prioritizeJob } from '@/features/telemetry/origin';
 import { trackJobViewed } from '@/features/telemetry/api';
@@ -54,14 +55,7 @@ interface SwipeProps {
   priorityJobId?: string | null;
 }
 
-function SkillRow({ skill }: { skill: MatchFactor }) {
-  const status =
-    skill.declared === 0
-      ? 'missing'
-      : skill.declared >= skill.required
-        ? 'match'
-        : 'gap';
-
+function SkillRow({ skill, status }: { skill: MatchFactor; status: ItemStatus }) {
   const config = {
     match: {
       icon: CheckCircle2,
@@ -81,6 +75,13 @@ function SkillRow({ skill }: { skill: MatchFactor }) {
       bg: 'bg-jm-red/10',
       label: 'Ausente',
     },
+    // Item de um grupo ja atendido (N33).
+    alternative: {
+      icon: CheckCircle2,
+      color: 'text-muted-foreground',
+      bg: 'bg-muted/40',
+      label: 'Alternativa',
+    },
   };
 
   const c = config[status];
@@ -95,6 +96,11 @@ function SkillRow({ skill }: { skill: MatchFactor }) {
           {skill.mandatory && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium">
               Obrigatória
+            </span>
+          )}
+          {skill.group && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {skill.group.min} de {skill.group.size}
             </span>
           )}
         </div>
@@ -138,15 +144,18 @@ function JobCard({
     }
   };
 
-  const matchSkills = match.factors.filter(
-    (factor) => factor.declared >= factor.required,
-  ).length;
-  const gapSkills = match.factors.filter(
-    (factor) => factor.declared > 0 && factor.declared < factor.required,
-  ).length;
-  const missingSkills = match.factors.filter(
-    (factor) => factor.declared === 0,
-  ).length;
+  // Grupo de alternativas (N33) conta como um item.
+  const summary = summarizeItems(
+    match.factors.map((factor) => ({
+      required: factor.required,
+      declared: factor.declared,
+      groupId: factor.group?.id,
+      groupMin: factor.group?.min,
+    })),
+  );
+  const matchSkills = summary.counts.match;
+  const gapSkills = summary.counts.gap;
+  const missingSkills = summary.counts.missing;
 
   return (
     <motion.div
@@ -257,7 +266,7 @@ function JobCard({
             {/* Skills list */}
             <div className="space-y-2">
               {match.factors.map((skill, i) => (
-                <SkillRow key={i} skill={skill} />
+                <SkillRow key={i} skill={skill} status={summary.statuses[i] ?? 'missing'} />
               ))}
             </div>
           </div>

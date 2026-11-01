@@ -3,6 +3,7 @@ import { IMPORTANCE_VALUES } from './importance';
 import { SENIORITY_VALUES } from './seniority';
 import { JOB_ITEM_ROLES } from './item-roles';
 import { MAX_SKILL_LEVEL, MIN_SKILL_LEVEL } from '../skills/levels';
+import { MAX_GROUP_MIN, validateGroups } from './skill-groups';
 
 export const EMPLOYMENT_TYPES = ['CLT', 'PJ', 'Híbrido'] as const;
 
@@ -20,6 +21,8 @@ export const JobSkillInputSchema = z.object({
     })
     .optional(),
   mandatory: z.boolean().optional(),
+  // Grupo de alternativas (N33): chave de um item de "groups".
+  groupKey: z.string().min(1).max(20).optional(),
   importance: z
     .enum(IMPORTANCE_VALUES, {
       errorMap: () => ({ message: 'Escolha uma importância válida.' }),
@@ -28,6 +31,20 @@ export const JobSkillInputSchema = z.object({
 });
 
 export const MAX_JOB_REQUIREMENTS = 8;
+export const MAX_SKILL_GROUPS = 5;
+
+// Grupo de alternativas da vaga (N33): o candidato precisa de minCount itens.
+export const JobSkillGroupInputSchema = z.object({
+  key: z.string().min(1).max(20),
+  minCount: z
+    .number()
+    .int('O mínimo do grupo deve ser um número inteiro.')
+    .min(1, 'O mínimo do grupo é 1.')
+    .max(MAX_GROUP_MIN, `O mínimo do grupo é no máximo ${MAX_GROUP_MIN}.`),
+  role: z.enum(JOB_ITEM_ROLES, {
+    errorMap: () => ({ message: 'Escolha o papel do grupo.' }),
+  }),
+});
 
 // Requisito sim/nao da vaga (N31). eliminatory = excludente: quem responde nao
 // e recusado na hora, com retorno de motivo.
@@ -88,9 +105,19 @@ export const CreateJobSchema = z.object({
       'O mesmo requisito foi adicionado mais de uma vez.',
     )
     .default([]),
+  groups: z
+    .array(JobSkillGroupInputSchema)
+    .max(MAX_SKILL_GROUPS, `Crie no máximo ${MAX_SKILL_GROUPS} grupos de alternativas.`)
+    .default([]),
+}).superRefine((job, context) => {
+  const problem = validateGroups(job.skills, job.groups);
+  if (problem) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: problem, path: ['groups'] });
+  }
 });
 
 export type CreateJobInput = z.input<typeof CreateJobSchema>;
 export type CreateJobData = z.output<typeof CreateJobSchema>;
 export type JobSkillInput = z.infer<typeof JobSkillInputSchema>;
 export type JobRequirementInput = z.input<typeof JobRequirementInputSchema>;
+export type JobSkillGroupInput = z.infer<typeof JobSkillGroupInputSchema>;
